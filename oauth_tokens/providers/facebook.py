@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-from oauth_tokens.base import BaseAccessTokenProvider
+from oauth_tokens.base import BaseAccessToken
 import cgi
 
-class FacebookAccessTokenProvider(BaseAccessTokenProvider):
+class FacebookAccessToken(BaseAccessToken):
 
     provider = 'facebook'
     authenticate_url = 'https://www.facebook.com/dialog/oauth'

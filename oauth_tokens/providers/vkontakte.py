@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 from BeautifulSoup import BeautifulSoup
-from oauth_tokens.base import BaseAccessTokenProvider
+from oauth_tokens.base import BaseAccessToken
 import re
 
-class VkontakteAccessTokenProvider(BaseAccessTokenProvider):
+class VkontakteAccessToken(BaseAccessToken):
 
     provider = 'vkontakte'
     authenticate_url = 'https://api.vkontakte.ru/oauth/authorize'

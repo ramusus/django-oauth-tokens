@@ -3,12 +3,13 @@ from tyoi.oauth2 import AccessTokenRequest, AccessTokenRequestError, AccessToken
 from tyoi.oauth2.grants import AuthorizationCode, ClientCredentials
 from tyoi.oauth2.authenticators import ClientPassword
 from urlparse import urlparse
+from models import AccessToken
 import requests
 import logging
 
 log = logging.getLogger('oauth_tokens')
 
-class BaseAccessTokenProvider(object):
+class BaseAccessToken(object):
 
     def __init__(self):
         self.client_id = self.get_setting('client_id')
@@ -36,8 +37,10 @@ class BaseAccessTokenProvider(object):
         '''
         raise NotImplementedError()
 
-    def get_token(self):
-
+    def get(self):
+        '''
+        Get new token from provider
+        '''
         auth_uri = AuthorizationCode.build_auth_uri(
             endpoint = self.authenticate_url,
             client_id = self.client_id,
