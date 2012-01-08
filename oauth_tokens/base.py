@@ -17,10 +17,8 @@ class BaseAccessToken(object):
         self.scope = self.get_setting('scope')
         self.username = self.get_setting('username')
         self.password = self.get_setting('password')
-
-        # TODO: remove stupid urls
-        self.redirect_uri = 'http://ram-laptop.ru/auth/'
-        self.return_to = 'http://ram-laptop.ru/auth/'
+        self.redirect_uri = self.get_setting('redirect_uri')
+        self.return_to = self.get_setting('redirect_uri')
 
     def get_setting(self, key):
         return getattr(settings, 'OAUTH_TOKENS_%s_%s' % (self.provider.upper(), key.upper()))
@@ -50,28 +48,42 @@ class BaseAccessToken(object):
         log.debug(auth_uri)
 
         response = requests.get(auth_uri)
-        log.debug(response.__dict__)
+
+        log.debug('Response dict: %s' % response.__dict__)
+        log.debug('Response content: %s' % response.content)
+
         method, action, data = self.parse_auth_form(response.content)
 
         # submit auth form data
         response = requests.post(action, data)
-        log.debug(response.__dict__)
-        log.debug(response.headers['location'])
+
+        log.debug('Response dict: %s' % response.__dict__)
+        log.debug('Response location: %s' % response.headers['location'])
 
         response = requests.get(response.headers['location'], cookies=response.cookies)
-        log.debug(response.__dict__)
+
+        log.debug('Response dict: %s' % response.__dict__)
+        log.debug('Response content: %s' % response.content)
+
         params = dict([part.split('=') for part in urlparse(response.url)[4].split('&')])
         if 'code' not in params:
             # it's neccesary additionally to approve requested permissions
             method, approve_url, data = self.parse_permissions_form(response.content)
-            log.debug(approve_url)
+#            approve_url = 'https://oauth.vkontakte.ru/grant_access?hash=a6c75e8c325807e0e5&client_id=2735668&settings=32768&redirect_uri=http%3A%2F%2Fads.movister.ru%2F&response_type=code&state=&token_type=0'
+
+            log.debug('Grant url: %s' % approve_url)
+
             response = requests.get(approve_url, cookies=response.cookies)
-            log.debug(response.__dict__)
+
+            log.debug('Response dict: %s' % response.__dict__)
+            log.debug('Response content: %s' % response.content)
+
             params = dict([part.split('=') for part in urlparse(response.url)[4].split('&')])
             if 'code' not in params:
                 raise Exception("Vkontakte OAuth response didn't return code parameter")
 
         code = params['code']
+        log.debug('Code: %s' % code)
 
         grant = AuthorizationCode(code, self.return_to)
 #       grant = ClientCredentials(scope='32768')

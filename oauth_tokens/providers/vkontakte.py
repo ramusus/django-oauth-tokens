@@ -35,6 +35,6 @@ class VkontakteAccessToken(BaseAccessToken):
         '''
         matches = re.findall('function approve\(\) {\s+location.href = "([^"]+)";', page_content)
         if len(matches) != 1:
-            raise Exception('Error while parsing approve page contents')
+            raise Exception('Error while parsing permissions page contents')
 
         return ('get', matches[0], {})
