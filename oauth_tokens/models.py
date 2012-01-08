@@ -52,9 +52,12 @@ class AccessToken(models.Model):
     granted = models.DateTimeField(auto_now=True)
 
     access_token = models.CharField(max_length=200)
-    expires = models.DateTimeField()
-    token_type = models.CharField(max_length=200, null=True)
-    refresh_token = models.CharField(max_length=200, null=True)
-    scope = models.CharField(max_length=200, null=True)
+    expires = models.DateTimeField(blank=True)
+    token_type = models.CharField(max_length=200, null=True, blank=True)
+    refresh_token = models.CharField(max_length=200, null=True, blank=True)
+    scope = models.CharField(max_length=200, null=True, blank=True)
 
     objects = AccessTokenManager()
+
+    def __str__(self):
+        return '#%s' % self.access_token
