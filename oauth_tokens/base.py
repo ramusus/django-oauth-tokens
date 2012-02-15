@@ -11,6 +11,8 @@ log = logging.getLogger('oauth_tokens')
 
 class BaseAccessToken(object):
 
+    cookies = None
+
     def __init__(self):
         self.client_id = self.get_setting('client_id')
         self.client_secret = self.get_setting('client_secret')
@@ -35,9 +37,9 @@ class BaseAccessToken(object):
         '''
         raise NotImplementedError()
 
-    def get(self):
+    def authorize(self):
         '''
-        Get new token from provider
+        Authorize and set self.cookies for next requests and return response of last request
         '''
         auth_uri = AuthorizationCode.build_auth_uri(
             endpoint = self.authenticate_url,
@@ -49,21 +51,44 @@ class BaseAccessToken(object):
 
         response = requests.get(auth_uri)
 
-        log.debug('Response dict: %s' % response.__dict__)
-        log.debug('Response content: %s' % response.content)
+        log.debug('Response form dict: %s' % response.__dict__)
+        log.debug('Response form content: %s' % response.content)
 
         method, action, data = self.parse_auth_form(response.content)
 
         # submit auth form data
         response = requests.post(action, data)
 
-        log.debug('Response dict: %s' % response.__dict__)
-        log.debug('Response location: %s' % response.headers['location'])
+        log.debug('Response auth dict: %s' % response.__dict__)
+        log.debug('Response auth location: %s' % response.headers['location'])
 
-        response = requests.get(response.headers['location'], cookies=response.cookies)
+        self.cookies = response.cookies
 
-        log.debug('Response dict: %s' % response.__dict__)
-        log.debug('Response content: %s' % response.content)
+        return response
+
+    def authorized_request(self, method='get', **kwargs):
+
+        if method not in ['get','post']:
+            raise ValueError('Only `get` and `post` are allowed methods')
+
+        if not self.cookies:
+            self.authorize()
+
+        if self.cookies:
+            return getattr(requests, method)(cookies=self.cookies, **kwargs)
+        else:
+            raise ValueError('Cookies for authorized request are empty')
+
+    def get(self):
+        '''
+        Get new token from provider
+        '''
+        response = self.authorize()
+
+        response = self.authorized_request(url=response.headers['location'])
+
+        log.debug('Response redirect dict: %s' % response.__dict__)
+        log.debug('Response redirect content: %s' % response.content)
 
         params = dict([part.split('=') for part in urlparse(response.url)[4].split('&')])
         if 'code' not in params:
@@ -75,8 +100,8 @@ class BaseAccessToken(object):
 
             response = requests.get(approve_url, cookies=response.cookies)
 
-            log.debug('Response dict: %s' % response.__dict__)
-            log.debug('Response content: %s' % response.content)
+            log.debug('Response token dict: %s' % response.__dict__)
+            log.debug('Response token content: %s' % response.content)
 
             params = dict([part.split('=') for part in urlparse(response.url)[4].split('&')])
             if 'code' not in params:
