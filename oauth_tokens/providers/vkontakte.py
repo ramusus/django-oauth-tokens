@@ -10,6 +10,9 @@ class VkontakteAccessToken(BaseAccessToken):
     access_token_url = 'https://api.vkontakte.ru/oauth/access_token'
     response_decoder = None
 
+    # additional security request with mobile phone number asking
+    #r = requests.post('http://vk.com/login.php', headers={'X-Requested-With': 'XMLHttpRequest'}, data={'act': 'security_check', 'code': 6567, 'to': 'c3RhdHM/Z2lkPTMwMjIxMTIx', 'al_page': '4', 'hash': 'b3bbb7b5042cea1a36'}, cookies=a_response.cookies)
+
     def parse_auth_form(self, page_content):
         '''
         Parse page with auth form and return tuple with (method, form action, form submit parameters)

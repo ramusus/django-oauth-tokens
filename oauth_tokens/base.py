@@ -3,7 +3,6 @@ from tyoi.oauth2 import AccessTokenRequest, AccessTokenRequestError, AccessToken
 from tyoi.oauth2.grants import AuthorizationCode, ClientCredentials
 from tyoi.oauth2.authenticators import ClientPassword
 from urlparse import urlparse
-from models import AccessToken
 import requests
 import logging
 
@@ -117,6 +116,7 @@ class BaseAccessToken(object):
 
         try:
             token = oauth_request.send(self.response_decoder)
+            token.scope = ','.join(self.scope)
             return token
         except AccessTokenRequestError, ex:
             log.error('Invalid response from oauth provider [code=%s]' % ex.error_code)
