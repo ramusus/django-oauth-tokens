@@ -10,9 +10,6 @@ class VkontakteAccessToken(BaseAccessToken):
     access_token_url = 'https://api.vkontakte.ru/oauth/access_token'
     response_decoder = None
 
-    # additional security request with mobile phone number asking
-    #r = requests.post('http://vk.com/login.php', headers={'X-Requested-With': 'XMLHttpRequest'}, data={'act': 'security_check', 'code': 6567, 'to': 'c3RhdHM/Z2lkPTMwMjIxMTIx', 'al_page': '4', 'hash': 'b3bbb7b5042cea1a36'}, cookies=a_response.cookies)
-
     def parse_auth_form(self, page_content):
         '''
         Parse page with auth form and return tuple with (method, form action, form submit parameters)
@@ -41,3 +38,22 @@ class VkontakteAccessToken(BaseAccessToken):
             raise Exception('Error while parsing permissions page contents')
 
         return ('get', matches[0], {})
+
+    def authorized_request(self, method='get', **kwargs):
+        '''
+        Protection from security question about end of phone number
+        '''
+        response = super(VkontakteAccessToken, self).authorized_request(self, method=method, **kwargs)
+
+        if '<input name="code" id="code" type="text" class="text"' in response.content:
+            m = re.findall(r"var params = {act: 'security_check', code: ge\('code'\).value, to: '([^']+)', al_page: '4', hash: '([^']+)'};", response.content)
+
+            if len(m) == 0:
+                raise Exception("Impossible to find security check parameters")
+
+            response = requests.post('http://vk.com/login.php',
+                headers = {'X-Requested-With': 'XMLHttpRequest'},
+                cookies = response.cookies,
+                data = {'act': 'security_check', 'code': self.get_setting('phone_end'), 'to': m[0][0], 'al_page': '4', 'hash': m[0][1]})
+
+        return self.authorized_request(self, method=method, **kwargs)
