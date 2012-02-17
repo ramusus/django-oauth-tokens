@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from BeautifulSoup import BeautifulSoup
 from oauth_tokens.base import BaseAccessToken
+import requests
 import re
 
 class VkontakteAccessToken(BaseAccessToken):
