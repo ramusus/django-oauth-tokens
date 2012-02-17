@@ -43,7 +43,7 @@ class VkontakteAccessToken(BaseAccessToken):
         '''
         Protection from security question about end of phone number
         '''
-        response = super(VkontakteAccessToken, self).authorized_request(self, method=method, **kwargs)
+        response = super(VkontakteAccessToken, self).authorized_request(method=method, **kwargs)
 
         if '<input name="code" id="code" type="text" class="text"' in response.content:
             m = re.findall(r"var params = {act: 'security_check', code: ge\('code'\).value, to: '([^']+)', al_page: '4', hash: '([^']+)'};", response.content)
@@ -56,4 +56,4 @@ class VkontakteAccessToken(BaseAccessToken):
                 cookies = response.cookies,
                 data = {'act': 'security_check', 'code': self.get_setting('phone_end'), 'to': m[0][0], 'al_page': '4', 'hash': m[0][1]})
 
-        return self.authorized_request(self, method=method, **kwargs)
+        return self.authorized_request(method=method, **kwargs)
