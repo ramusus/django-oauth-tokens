@@ -57,4 +57,6 @@ class VkontakteAccessToken(BaseAccessToken):
                 cookies = response.cookies,
                 data = {'act': 'security_check', 'code': self.get_setting('phone_end'), 'to': m[0][0], 'al_page': '4', 'hash': m[0][1]})
 
-        return self.authorized_request(method=method, **kwargs)
+            return response
+
+        return response
