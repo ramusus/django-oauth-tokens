@@ -13,16 +13,19 @@ class BaseAccessToken(object):
     cookies = None
 
     def __init__(self):
+        self.authenticate_url = self.get_setting('authenticate_url') or self.authenticate_url
+        self.access_token_url = self.get_setting('access_token_url') or self.access_token_url
+        self.redirect_uri = self.get_setting('redirect_uri') or self.redirect_uri
+        self.return_to = self.get_setting('redirect_uri') or self.redirect_uri
+
         self.client_id = self.get_setting('client_id')
         self.client_secret = self.get_setting('client_secret')
         self.scope = self.get_setting('scope')
         self.username = self.get_setting('username')
         self.password = self.get_setting('password')
-        self.redirect_uri = self.get_setting('redirect_uri')
-        self.return_to = self.get_setting('redirect_uri')
 
     def get_setting(self, key):
-        return getattr(settings, 'OAUTH_TOKENS_%s_%s' % (self.provider.upper(), key.upper()))
+        return getattr(settings, 'OAUTH_TOKENS_%s_%s' % (self.provider.upper(), key.upper()), None)
 
     def parse_auth_form(self, page_content):
         '''
@@ -78,6 +81,17 @@ class BaseAccessToken(object):
         else:
             raise ValueError('Cookies for authorized request are empty')
 
+    def get_response_code(self, url):
+        parsed_url = urlparse(url)
+        if 'code' in parsed_url.query:
+            part = parsed_url.query
+        elif 'code' in parsed_url.fragment:
+            part = parsed_url.fragment
+        else:
+            return None
+        params = dict([part.split('=') for part in part.split('&')])
+        return params['code']
+
     def get(self):
         '''
         Get new token from provider
@@ -89,8 +103,8 @@ class BaseAccessToken(object):
         log.debug('Response redirect dict: %s' % response.__dict__)
         log.debug('Response redirect content: %s' % response.content)
 
-        params = dict([part.split('=') for part in urlparse(response.url)[4].split('&')])
-        if 'code' not in params:
+        code = self.get_response_code(response.url)
+        if not code:
             # it's neccesary additionally to approve requested permissions
             method, approve_url, data = self.parse_permissions_form(response.content)
 #            approve_url = 'https://oauth.vkontakte.ru/grant_access?hash=a6c75e8c325807e0e5&client_id=2735668&settings=32768&redirect_uri=http%3A%2F%2Fads.movister.ru%2F&response_type=code&state=&token_type=0'
@@ -102,11 +116,10 @@ class BaseAccessToken(object):
             log.debug('Response token dict: %s' % response.__dict__)
             log.debug('Response token content: %s' % response.content)
 
-            params = dict([part.split('=') for part in urlparse(response.url)[4].split('&')])
-            if 'code' not in params:
+            code = self.get_response_code(response.url)
+            if not code:
                 raise Exception("Vkontakte OAuth response didn't return code parameter")
 
-        code = params['code']
         log.debug('Code: %s' % code)
 
         grant = AuthorizationCode(code, self.return_to)

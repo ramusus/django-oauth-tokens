@@ -9,6 +9,7 @@ class VkontakteAccessToken(BaseAccessToken):
     provider = 'vkontakte'
     authenticate_url = 'https://api.vkontakte.ru/oauth/authorize'
     access_token_url = 'https://api.vkontakte.ru/oauth/access_token'
+    redirect_uri = 'http://api.vk.com/blank.html'
     response_decoder = None
 
     def parse_auth_form(self, page_content):
@@ -56,7 +57,5 @@ class VkontakteAccessToken(BaseAccessToken):
                 headers = {'X-Requested-With': 'XMLHttpRequest'},
                 cookies = response.cookies,
                 data = {'act': 'security_check', 'code': self.get_setting('phone_end'), 'to': m[0][0], 'al_page': '4', 'hash': m[0][1]})
-
-            return response
 
         return response
