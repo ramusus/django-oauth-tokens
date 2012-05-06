@@ -41,6 +41,18 @@ class VkontakteAccessToken(BaseAccessToken):
 
         return ('get', matches[0], {})
 
+    def authorize(self):
+        '''
+        Protection from security question about end of phone number
+        '''
+        response = super(VkontakteAccessToken, self).authorize()
+
+        if response.content == 'security breach':
+            index_page = self.authorized_request('http://vk.com/')
+            response = super(VkontakteAccessToken, self).authorize()
+
+        return response
+
     def authorized_request(self, method='get', **kwargs):
         '''
         Protection from security question about end of phone number
