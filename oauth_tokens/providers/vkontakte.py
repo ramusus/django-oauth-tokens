@@ -48,7 +48,7 @@ class VkontakteAccessToken(BaseAccessToken):
         response = super(VkontakteAccessToken, self).authorize()
 
         if response.content == 'security breach':
-            index_page = self.authorized_request('http://vk.com/')
+            index_page = self.authorized_request(method='get', url='http://vk.com/')
             response = super(VkontakteAccessToken, self).authorize()
 
         return response
