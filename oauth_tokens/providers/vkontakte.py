@@ -7,8 +7,8 @@ import re
 class VkontakteAccessToken(BaseAccessToken):
 
     provider = 'vkontakte'
-    authenticate_url = 'https://api.vkontakte.ru/oauth/authorize'
-    access_token_url = 'https://api.vkontakte.ru/oauth/access_token'
+    authenticate_url = 'https://api.vk.com/oauth/authorize'
+    access_token_url = 'https://api.vk.com/oauth/access_token'
     redirect_uri = 'http://api.vk.com/blank.html'
     response_decoder = None
 
