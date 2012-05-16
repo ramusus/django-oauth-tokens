@@ -97,10 +97,10 @@ class BaseAccessToken(object):
         Get new token from provider
         '''
         response = self.authorize()
-        
+
         if response.status_code == 302:
             response = self.authorized_request(url=response.headers['location'])
-    
+
             log.debug('Response redirect dict: %s' % response.__dict__)
             log.debug('Response redirect content: %s' % response.content)
 

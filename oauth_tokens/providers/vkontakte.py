@@ -47,9 +47,17 @@ class VkontakteAccessToken(BaseAccessToken):
         '''
         response = super(VkontakteAccessToken, self).authorize()
 
+        # login from new place
         if response.content == 'security breach':
             index_page = self.authorized_request(method='get', url='http://vk.com/')
             response = super(VkontakteAccessToken, self).authorize()
+
+        # need approve for extra rights
+        if 'function approve() {' in response.content:
+            for url in re.findall(r'location.href = "([^"]+)"', response.content):
+                if 'response_type=code' in url:
+                    response = self.authorized_request(method='get', url=url)
+                    break
 
         return response
 
