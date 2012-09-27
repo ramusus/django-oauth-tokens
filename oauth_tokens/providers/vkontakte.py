@@ -24,7 +24,8 @@ class VkontakteAccessToken(BaseAccessToken):
 
         data = {}
         for input in form.findAll('input'):
-            data[input['name']] = input.get('value')
+            if input.get('name'):
+                data[input.get('name')] = input.get('value')
 
         data['email'] = self.username
         data['pass'] = self.password
