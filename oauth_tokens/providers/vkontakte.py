@@ -3,6 +3,9 @@ from BeautifulSoup import BeautifulSoup
 from oauth_tokens.base import BaseAccessToken
 import requests
 import re
+import logging
+
+log = logging.getLogger('oauth_tokens')
 
 class VkontakteAccessToken(BaseAccessToken):
 
@@ -52,6 +55,10 @@ class VkontakteAccessToken(BaseAccessToken):
         if response.content == 'security breach':
             index_page = self.authorized_request(method='get', url='http://vk.com/')
             response = super(VkontakteAccessToken, self).authorize()
+        elif response.content == '{"error":"invalid_request","error_description":"Security Error"}':
+            # TODO: fix it
+            log.error("Vkontakte authorization request returns error %s" % response.content)
+            raise Exception("Vkontakte authorization request returns error %s" % response.content)
 
         # need approve for extra rights
         if 'function approve() {' in response.content:

@@ -11,6 +11,7 @@ log = logging.getLogger('oauth_tokens')
 class BaseAccessToken(object):
 
     cookies = None
+    headers = {}
 
     def __init__(self):
         self.authenticate_url = self.get_setting('authenticate_url') or self.authenticate_url
@@ -51,7 +52,7 @@ class BaseAccessToken(object):
         )
         log.debug(auth_uri)
 
-        response = requests.get(auth_uri)
+        response = requests.get(auth_uri, headers=self.headers)
 
         log.debug('Response form dict: %s' % response.__dict__)
         log.debug('Response form content: %s' % response.content)
@@ -59,7 +60,7 @@ class BaseAccessToken(object):
         method, action, data = self.parse_auth_form(response.content)
 
         # submit auth form data
-        response = requests.post(action, data)
+        response = requests.post(action, data, cookies=response.cookies, headers=self.headers)
 
         log.debug('Response auth dict: %s' % response.__dict__)
         log.debug('Response auth location: %s' % response.headers['location'])
@@ -77,7 +78,7 @@ class BaseAccessToken(object):
             self.authorize()
 
         if self.cookies:
-            return getattr(requests, method)(cookies=self.cookies, **kwargs)
+            return getattr(requests, method)(cookies=self.cookies, headers=self.headers, **kwargs)
         else:
             raise ValueError('Cookies for authorized request are empty')
 
@@ -112,7 +113,7 @@ class BaseAccessToken(object):
 
             log.debug('Grant url: %s' % approve_url)
 
-            response = requests.get(approve_url, cookies=response.cookies)
+            response = requests.get(approve_url, cookies=response.cookies, headers=self.headers)
 
             log.debug('Response token dict: %s' % response.__dict__)
             log.debug('Response token content: %s' % response.content)
