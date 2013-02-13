@@ -67,8 +67,6 @@ class FacebookAccessToken(BaseAccessToken):
         Handling specific errors
         '''
         response = super(FacebookAccessToken, self).authorize()
-        import pdb
-        pdb.set_trace()
 
         if 'You are trying too often' in response.content:
             # TODO: fix it
