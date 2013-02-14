@@ -4,7 +4,7 @@ setup(
     name='django-oauth-tokens',
     version=__import__('oauth_tokens').__version__,
     description='Application for getting, refreshing and storing OAuth access_tokens for Django standalone applications',
-    long_description=open('README.rst').read(),
+    long_description=open('README.md').read(),
     author='ramusus',
     author_email='ramusus@gmail.com',
     url='https://github.com/ramusus/django-oauth-tokens',
@@ -14,8 +14,13 @@ setup(
     include_package_data=True,
     zip_safe=False, # because we're including media that Django needs
     install_requires=[
+        'django',
         'requests',
         'BeautifulSoup',
+        'tyoiAuth2',
+    ],
+    dependency_links = [
+        'https://github.com/ryanhorn/tyoiOAuth2.git#egg=tyoiAuth2',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
