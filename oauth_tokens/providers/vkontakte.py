@@ -67,6 +67,12 @@ class VkontakteAccessToken(BaseAccessToken):
                     response = self.authorized_request(method='get', url=url)
                     break
 
+        # first grant access question
+        if '<form method="post" action="https://login.vk.com/?act=grant_access' in response.content:
+            content = BeautifulSoup(response.content)
+            form = content.find('form')
+            response = requests.post(form['action'], cookies=response.cookies)
+
         return response
 
     def authorized_request(self, method='get', **kwargs):

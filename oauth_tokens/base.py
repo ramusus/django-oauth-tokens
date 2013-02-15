@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from tyoi.oauth2 import AccessTokenRequest, AccessTokenRequestError, AccessTokenResponseError
 from tyoi.oauth2.grants import AuthorizationCode, ClientCredentials
 from tyoi.oauth2.authenticators import ClientPassword
@@ -24,6 +25,10 @@ class BaseAccessToken(object):
         self.scope = self.get_setting('scope')
         self.username = self.get_setting('username')
         self.password = self.get_setting('password')
+
+        for required_setting in ['username','password','client_id','client_secret']:
+            if not getattr(self, required_setting):
+                raise ImproperlyConfigured('Setting OAUTH_TOKENS_%s_%s should be specified in settings.py' % (self.provider.upper(), required_setting.upper()))
 
     def get_setting(self, key):
         return getattr(settings, 'OAUTH_TOKENS_%s_%s' % (self.provider.upper(), key.upper()), None)
