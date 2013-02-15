@@ -17,7 +17,10 @@ setup(
         'django',
         'requests',
         'BeautifulSoup',
-        '-e git+https://github.com/ryanhorn/tyoiOAuth2.git#egg=tyoiAuth2',
+        'tyoiAuth2',
+    ],
+    dependency_links = [
+        'https://github.com/ryanhorn/tyoiOAuth2#egg=tyoiAuth2',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
