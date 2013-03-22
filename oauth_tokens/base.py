@@ -57,7 +57,8 @@ class BaseAccessToken(object):
         )
         log.debug(auth_uri)
 
-        response = requests.get(auth_uri, headers=self.headers)
+        response = requests.get(auth_uri, headers=self.headers, cookies=self.cookies)
+        self.cookies = response.cookies
 
         log.debug('Response form dict: %s' % response.__dict__)
         log.debug('Response form content: %s' % response.content)
@@ -65,12 +66,10 @@ class BaseAccessToken(object):
         method, action, data = self.parse_auth_form(response.content)
 
         # submit auth form data
-        response = requests.post(action, data, cookies=response.cookies, headers=self.headers)
+        response = requests.post(action, data, cookies=self.cookies, headers=self.headers)
 
         log.debug('Response auth dict: %s' % response.__dict__)
         log.debug('Response auth location: %s' % response.headers['location'])
-
-        self.cookies = response.cookies
 
         return response
 
@@ -96,7 +95,7 @@ class BaseAccessToken(object):
         else:
             return None
         params = dict([part.split('=') for part in part.split('&')])
-        return params['code']
+        return params['code'] if 'code' in params else None
 
     def get(self):
         '''
@@ -115,10 +114,13 @@ class BaseAccessToken(object):
             # it's neccesary additionally to approve requested permissions
             method, approve_url, data = self.parse_permissions_form(response.content)
 #            approve_url = 'https://oauth.vkontakte.ru/grant_access?hash=a6c75e8c325807e0e5&client_id=2735668&settings=32768&redirect_uri=http%3A%2F%2Fads.movister.ru%2F&response_type=code&state=&token_type=0'
+            kwargs = {}
+            if method == 'post':
+                kwargs['data'] = data
 
             log.debug('Grant url: %s' % approve_url)
 
-            response = requests.get(approve_url, cookies=response.cookies, headers=self.headers)
+            response = requests.request(method, url=approve_url, cookies=response.cookies, headers=self.headers, **kwargs)
 
             log.debug('Response token dict: %s' % response.__dict__)
             log.debug('Response token content: %s' % response.content)

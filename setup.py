@@ -13,14 +13,14 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False, # because we're including media that Django needs
+    dependency_links = [
+        'https://github.com/ryanhorn/tyoiOAuth2/tarball/master#egg=tyoi.OAuth2-0.2.1',
+    ],
     install_requires=[
         'django',
         'requests',
         'BeautifulSoup',
-        'tyoiAuth2',
-    ],
-    dependency_links = [
-        'https://github.com/ryanhorn/tyoiOAuth2#egg=tyoiAuth2',
+        'tyoi.OAuth2',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',

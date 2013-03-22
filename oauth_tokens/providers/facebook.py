@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
+from django.core.exceptions import ImproperlyConfigured
 from BeautifulSoup import BeautifulSoup
 from oauth_tokens.base import BaseAccessToken
 import cgi
 import logging
+import requests
 
 log = logging.getLogger('oauth_tokens')
 
@@ -72,5 +74,14 @@ class FacebookAccessToken(BaseAccessToken):
             # TODO: fix it
             log.error("Vkontakte authorization request returns error 'You are trying too often'")
             raise Exception("Vkontakte authorization request returns error 'You are trying too often'")
+        if 'Cookies Required' in response.content:
+            response = requests.get('http://facebook.com')
+            self.cookies = response.cookies
+            self.authorize()
+        if 'API Error Code: 191' in response.content:
+            raise ImproperlyConfigured("You must specify URL '%s' in your facebook application settings" % self.redirect_uri)
+
+        if 'Your account is temporarily locked.' in response.content:
+            raise ImproperlyConfigured("Facebook errored 'Your account is temporarily locked.'. Try to login via web browser")
 
         return response
