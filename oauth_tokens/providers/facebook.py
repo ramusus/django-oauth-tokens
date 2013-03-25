@@ -43,7 +43,11 @@ class FacebookAccessToken(BaseAccessToken):
         data['email'] = self.username
         data['pass'] = self.password
 
-        return (form.get('method').lower(), form.get('action'), data)
+        action = form.get('action')
+        if action[0] == '/':
+            action = 'https://facebook.com' + action
+
+        return (form.get('method').lower(), action, data)
 
     def parse_permissions_form(self, page_content):
         '''
