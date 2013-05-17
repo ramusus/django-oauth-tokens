@@ -66,7 +66,11 @@ class FacebookAccessToken(BaseAccessToken):
 
         del data['cancel_clicked']
 
-        return (form.get('method').lower(), form.get('action'), data)
+        action = form.get('action')
+        if action[0] == '/':
+            action = 'https://facebook.com' + action
+
+        return (form.get('method').lower(), action, data)
 
     def authorize(self):
         '''
