@@ -13,7 +13,7 @@ class FacebookAccessToken(BaseAccessToken):
     provider = 'facebook'
     authenticate_url = 'https://www.facebook.com/dialog/oauth'
     access_token_url = 'https://graph.facebook.com/oauth/access_token'
-    redirect_uri = 'http://socialcommunications.ru/404'
+    redirect_uri = 'http://www.facebook.com/page_not_found'
     response_decoder = lambda self,x: dict(cgi.parse_qsl(x))
     headers = {
         'User-Agent': 'Mozilla/5.0 (X11; Linux i686) AppleWebKit/536.11 (KHTML, like Gecko) Ubuntu/12.04 Chromium/20.0.1132.47 Chrome/20.0.1132.47 Safari/536.11',
