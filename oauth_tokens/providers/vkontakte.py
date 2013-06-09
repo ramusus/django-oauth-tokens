@@ -39,7 +39,7 @@ class VkontakteAccessToken(BaseAccessToken):
         '''
         Parse page with permissions form and return tuple with (method, form action, form submit parameters)
         '''
-        matches = re.findall('function approve\(\) {\s+location.href = "([^"]+)";', page_content)
+        matches = re.findall('location.href = "([^"]+https=1)"', page_content)
         if len(matches) != 1:
             raise Exception('Error while parsing permissions page contents')
 
