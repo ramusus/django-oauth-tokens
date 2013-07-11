@@ -67,6 +67,7 @@ class BaseAccessToken(object):
 
         # submit auth form data
         response = requests.post(action, data, cookies=self.cookies, headers=self.headers)
+        self.cookies = response.cookies
 
         log.debug('Response auth dict: %s' % response.__dict__)
         log.debug('Response auth location: %s' % response.headers['location'])
@@ -82,7 +83,7 @@ class BaseAccessToken(object):
             self.authorize()
 
         if self.cookies:
-            return getattr(requests, method)(cookies=self.cookies, headers=self.headers, **kwargs)
+            return getattr(requests, method)(cookies=self.cookies, headers=kwargs.pop('headers', self.headers), **kwargs)
         else:
             raise ValueError('Cookies for authorized request are empty')
 
