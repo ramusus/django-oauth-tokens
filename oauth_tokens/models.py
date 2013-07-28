@@ -10,6 +10,9 @@ PROVIDERS = getattr(settings, 'OAUTH_TOKENS_PROVIDERS', {
 })
 PROVIDER_CHOICES = [((provider, provider.title())) for provider in PROVIDERS.keys()]
 
+class AccessTokenGettingError(Exception):
+    pass
+
 class AccessTokenManager(models.Manager):
     '''
     Defautl manager for AccessToken for retrieving token
@@ -31,7 +34,7 @@ class AccessTokenManager(models.Manager):
 
         token = token_class().get()
         if not token:
-            raise Exception("Error while getting new token")
+            raise AccessTokenGettingError("Error while getting new token")
 
         if not HISTORY:
             self.filter(provider=provider).delete()
