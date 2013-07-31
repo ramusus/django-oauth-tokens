@@ -41,6 +41,7 @@ class VkontakteAccessToken(BaseAccessToken):
         '''
         matches = re.findall('location.href = "([^"]+https=1)"', page_content)
         if len(matches) != 1:
+            log.error("Error while parsing permissions page contents: %s" % page_content)
             raise Exception('Error while parsing permissions page contents')
 
         return ('get', matches[0], {})
