@@ -5,6 +5,7 @@ from oauth_tokens.base import BaseAccessToken
 import cgi
 import logging
 import requests
+import re
 
 log = logging.getLogger('oauth_tokens')
 
@@ -53,9 +54,14 @@ class FacebookAccessToken(BaseAccessToken):
         '''
         Parse page with permissions form and return tuple with (method, form action, form submit parameters)
         '''
-        content = BeautifulSoup(page_content)
+        if '{"__html":"\u003Cform class=\\"oauth _s\\"' in page_content:
+            matches = re.findall(r'{"__html":"(.+)"}', page_content)
+            content = BeautifulSoup(matches[0].replace('\u003C','<').replace('\\',''))
+            form = content.find('form', {'id': 'platformDialogForm'})
+        else:
+            content = BeautifulSoup(page_content)
+            form = content.find('form', {'id': 'uiserver_form'})
 
-        form = content.find('form', {'id': 'uiserver_form'})
         if not form:
             raise Exception('There is no any form in response')
 
@@ -64,7 +70,8 @@ class FacebookAccessToken(BaseAccessToken):
             if input.get('name'):
                 data[input.get('name')] = input.get('value')
 
-        del data['cancel_clicked']
+        if 'cancel_clicked' in data:
+            del data['cancel_clicked']
 
         action = form.get('action')
         if action[0] == '/':
