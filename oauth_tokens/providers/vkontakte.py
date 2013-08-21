@@ -91,6 +91,6 @@ class VkontakteAccessToken(BaseAccessToken):
             response = requests.post('http://vk.com/login.php',
                 headers = {'X-Requested-With': 'XMLHttpRequest'},
                 cookies = response.cookies,
-                data = {'act': 'security_check', 'code': self.get_setting('phone_end'), 'to': m[0][0], 'al_page': '4', 'hash': m[0][1]})
+                data = {'act': 'security_check', 'code': self.get_setting('additional'), 'to': m[0][0], 'al_page': '4', 'hash': m[0][1]})
 
         return response

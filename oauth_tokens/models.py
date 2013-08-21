@@ -1,7 +1,13 @@
+# -*- coding: utf-8 -*-
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.importlib import import_module
+from taggit.managers import TaggableManager
+from datetime import datetime
+import logging
+
+log = logging.getLogger('oauth_tokens')
 
 HISTORY = getattr(settings, 'OAUTH_TOKENS_HISTORY', False)
 PROVIDERS = getattr(settings, 'OAUTH_TOKENS_PROVIDERS', {
@@ -17,9 +23,23 @@ class AccessTokenManager(models.Manager):
     '''
     Defautl manager for AccessToken for retrieving token
     '''
-    def get_from_provider(self, provider):
+    def filter(self, *args, **kwargs):
         '''
-        Get new token and save it to database. After it clean database if OAUTH_TOKENS_HISTORY disabled
+        Optional filter by user's `tag`
+        '''
+        tag = kwargs.pop('tag', None)
+        if tag:
+            kwargs['user__in'] = UserCredentials.objects.filter(tags__name__in=[tag]).values_list('pk', flat=True)
+
+        return super(AccessTokenManager, self).filter(*args, **kwargs)
+
+    def filter_active_tokens_of_provider(self, provider, *args, **kwargs):
+        return self.filter(provider=provider, expires__gt=datetime.now(), *args, **kwargs).order_by('?')
+
+    def fetch(self, provider):
+        '''
+        Get new token and save it to database for all users in UserCredentials table.
+        Сlean database before if OAUTH_TOKENS_HISTORY disabled
         '''
         if provider not in PROVIDERS:
             raise ValueError("Provider `%s` not in available providers list" % provider)
@@ -32,17 +52,32 @@ class AccessTokenManager(models.Manager):
         except ImportError:
             raise ImproperlyConfigured("Impossible to find access token class with path %s" % PROVIDERS[provider])
 
-        token = token_class().get()
-        if not token:
-            raise AccessTokenGettingError("Error while getting new token")
+        # walk through all users of current provider in UserCredentials table
+        # or try to get user credentials from settings
+        users = UserCredentials.objects.filter(provider=provider, active=True)
+        if users.count() == 0:
+            users = [None]
 
-        if not HISTORY:
-            self.filter(provider=provider).delete()
+        access_tokens = []
 
-        access_token = self.model(provider=provider)
-        access_token.__dict__.update(token.__dict__)
-        access_token.save()
-        return access_token
+        for user in users:
+            token = token_class(user=user).get()
+            if not token:
+                log.error("Error while getting new token for provider %s, user %s" % (provider, user))
+                continue
+
+            if not HISTORY:
+                self.filter(provider=provider, user=user).delete()
+
+            access_token = self.model(provider=provider, user=user)
+            access_token.__dict__.update(token.__dict__)
+            access_token.save()
+            access_tokens += [access_token]
+
+        if len(access_tokens) == 0:
+            raise AccessTokenGettingError("Error while updating tokens for provider %s" % provider)
+
+        return access_tokens
 
 class AccessToken(models.Model):
     class Meta:
@@ -60,7 +95,24 @@ class AccessToken(models.Model):
     refresh_token = models.CharField(max_length=200, null=True, blank=True)
     scope = models.CharField(max_length=200, null=True, blank=True)
 
+    user = models.ForeignKey('UserCredentials', null=True, blank=True)
+
     objects = AccessTokenManager()
 
     def __str__(self):
         return '#%s' % self.access_token
+
+class UserCredentials(models.Model):
+
+    name = models.CharField(max_length=100)
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    active = models.BooleanField()
+
+    username = models.CharField(max_length=100)
+    password = models.CharField(max_length=100)
+    additional = models.CharField(max_length=100, blank=True)
+
+    tags = TaggableManager(blank=True)
+
+    def __unicode__(self):
+        return self.name

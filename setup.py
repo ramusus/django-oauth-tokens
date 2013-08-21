@@ -21,6 +21,7 @@ setup(
         'requests',
         'BeautifulSoup',
         'tyoi.OAuth2',
+        'django-taggit',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',

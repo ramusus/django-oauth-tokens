@@ -4,6 +4,7 @@ from tyoi.oauth2 import AccessTokenRequest, AccessTokenRequestError, AccessToken
 from tyoi.oauth2.grants import AuthorizationCode, ClientCredentials
 from tyoi.oauth2.authenticators import ClientPassword
 from urlparse import urlparse
+from models import UserCredentials
 import requests
 import logging
 
@@ -11,10 +12,19 @@ log = logging.getLogger('oauth_tokens')
 
 class BaseAccessToken(object):
 
+    user = None
     cookies = None
     headers = {}
 
-    def __init__(self):
+    def __init__(self, user=None, tag=None):
+        self.user = user
+
+        if not self.user and tag:
+            try:
+                self.user = UserCredentials.objects.filter(provider=self.provider, tags__name__in=[tag])[0]
+            except KeyError:
+                log.error("User with tag %s for provider %s does not exist" % (tag, self.provider))
+
         self.authenticate_url = self.get_setting('authenticate_url') or self.authenticate_url
         self.access_token_url = self.get_setting('access_token_url') or self.access_token_url
         self.redirect_uri = self.get_setting('redirect_uri') or self.redirect_uri
@@ -26,11 +36,18 @@ class BaseAccessToken(object):
         self.username = self.get_setting('username')
         self.password = self.get_setting('password')
 
-        for required_setting in ['username','password','client_id','client_secret']:
+        required_settings = ['client_id','client_secret']
+        if not self.user:
+             required_settings += ['username', 'password']
+
+        for required_setting in required_settings:
             if not getattr(self, required_setting):
                 raise ImproperlyConfigured('Setting OAUTH_TOKENS_%s_%s should be specified in settings.py' % (self.provider.upper(), required_setting.upper()))
 
     def get_setting(self, key):
+        if self.user and key in 'username,password,additional'.split(','):
+            return getattr(self.user, key)
+
         return getattr(settings, 'OAUTH_TOKENS_%s_%s' % (self.provider.upper(), key.upper()), None)
 
     def parse_auth_form(self, page_content):
