@@ -61,9 +61,12 @@ class AccessTokenManager(models.Manager):
         access_tokens = []
 
         for user in users:
-            token = token_class(user=user).get()
-            if not token:
-                log.error("Error while getting new token for provider %s, user %s" % (provider, user))
+
+            try:
+                token = token_class(user=user).get()
+                assert token
+            except Exception, e:
+                log.error("Error '%s' while getting new token for provider %s, user %s" % (e, provider, user))
                 continue
 
             if not HISTORY:

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from BeautifulSoup import BeautifulSoup
-from oauth_tokens.base import BaseAccessToken
+from oauth_tokens.base import BaseAccessToken, OAuthError
 import requests
 import re
 import logging
@@ -59,7 +59,7 @@ class VkontakteAccessToken(BaseAccessToken):
         elif response.content == '{"error":"invalid_request","error_description":"Security Error"}':
             # TODO: fix it
             log.error("Vkontakte authorization request returns error %s" % response.content)
-            raise Exception("Vkontakte authorization request returns error %s" % response.content)
+            raise OAuthError("Vkontakte authorization request returns error %s" % response.content)
 
         # need approve for extra rights
         if 'function approve() {' in response.content:
@@ -73,6 +73,10 @@ class VkontakteAccessToken(BaseAccessToken):
             content = BeautifulSoup(response.content)
             form = content.find('form')
             response = requests.get(form['action'], cookies=response.cookies)
+
+        if 'class="oauth_error"' in response.content:
+            content = BeautifulSoup(response.content.decode('windows-1251'))
+            raise OAuthError(content.find('div', **{'class': 'oauth_error'}).text.encode('utf-8'))
 
         return response
 
