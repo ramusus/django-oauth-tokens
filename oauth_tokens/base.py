@@ -90,7 +90,7 @@ class BaseAccessToken(object):
         self.cookies = response.cookies
 
         log.debug('Response auth dict: %s' % response.__dict__)
-        log.debug('Response auth location: %s' % response.headers['location'])
+        log.debug('Response auth location: %s' % response.headers.get('location'))
 
         return response
 
