@@ -36,13 +36,18 @@ class FacebookAccessToken(BaseAccessToken):
         if not form:
             raise Exception('There is no any form in response')
 
+        method, action, data = self.get_form_attributes(form)
+
+        data['email'] = self.username
+        data['pass'] = self.password
+
+        return (method, action, data)
+
+    def get_form_attributes(self, form):
         data = {}
         for input in form.findAll('input'):
             if input.get('name'):
                 data[input.get('name')] = input.get('value')
-
-        data['email'] = self.username
-        data['pass'] = self.password
 
         action = form.get('action')
         if action[0] == '/':
@@ -54,6 +59,9 @@ class FacebookAccessToken(BaseAccessToken):
         '''
         Parse page with permissions form and return tuple with (method, form action, form submit parameters)
         '''
+        if 'Your Account Is Temporarily Locked' in page_content:
+            raise ImproperlyConfigured("Facebook errored 'Your account is temporarily locked.'. Try to login via web browser")
+
         if '{"__html":"\u003Cform class=\\"oauth _s\\"' in page_content:
             matches = re.findall(r'{"__html":"(.+)"}', page_content)
             content = BeautifulSoup(matches[0].replace('\u003C','<').replace('\\',''))

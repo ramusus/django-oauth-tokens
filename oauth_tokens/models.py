@@ -92,7 +92,7 @@ class AccessToken(models.Model):
     provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
     granted = models.DateTimeField(auto_now=True)
 
-    access_token = models.CharField(max_length=200)
+    access_token = models.CharField(max_length=500)
     expires = models.DateTimeField(null=True, blank=True)
     token_type = models.CharField(max_length=200, null=True, blank=True)
     refresh_token = models.CharField(max_length=200, null=True, blank=True)
