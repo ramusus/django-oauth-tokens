@@ -14,6 +14,17 @@ class VkontakteAccessToken(BaseAccessToken):
     access_token_url = 'https://api.vk.com/oauth/access_token'
     redirect_uri = 'http://api.vk.com/blank.html'
     response_decoder = None
+    headers = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Encoding': 'gzip,deflate,sdch',
+        'Accept-Language': 'en-US,en;q=0.8',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Cookie': 'audio_time_left=1; audio_vol=100; remixlang=0; remixexp=1; remixstid=992892995; remixdt=5400; remixrefkey=ce1feae619112813c2; remixvkcom=; remixtst=4dc9ab5b; remixrec_sid=; remixseenads=1; remixreg_sid=; remixlo_hash=; remixflash=11.2.202; remixscreen_depth=24; remixmid=; remixsid=; remixsid6=; remixgid=; remixemail=; remixpass=; remixapi_sid=; remixpermit=; remixsslsid=',
+        'Pragma': 'no-cache',
+        'Referer': 'http://vk.com/',
+        'User-Agent': 'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/30.0.1599.114 Chrome/30.0.1599.114 Safari/537.36',
+    }
 
     def parse_auth_form(self, page_content):
         '''
