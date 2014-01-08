@@ -87,6 +87,8 @@ class BaseAccessToken(object):
 
         # submit auth form data
         response = requests.post(action, data, cookies=self.cookies, headers=self.headers)
+        print response.content.decode('windows-1251')
+
         self.cookies = response.cookies
 
         log.debug('Response auth dict: %s' % response.__dict__)

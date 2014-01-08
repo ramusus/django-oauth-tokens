@@ -50,6 +50,8 @@ class VkontakteAccessToken(BaseAccessToken):
         '''
         Parse page with permissions form and return tuple with (method, form action, form submit parameters)
         '''
+        print page_content.decode('windows-1251')
+
         matches = re.findall('location.href = "([^"]+https=1)"', page_content)
         if len(matches) != 1:
             log.error("Error while parsing permissions page contents: %s" % page_content)
@@ -62,6 +64,7 @@ class VkontakteAccessToken(BaseAccessToken):
         Protection from security question about end of phone number
         '''
         response = super(VkontakteAccessToken, self).authorize()
+        print response.content.decode('windows-1251')
 
         # login from new place
         if response.content == 'security breach':
