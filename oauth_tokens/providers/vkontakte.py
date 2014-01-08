@@ -85,6 +85,13 @@ class VkontakteAccessToken(BaseAccessToken):
             form = content.find('form')
             response = requests.get(form['action'], cookies=response.cookies)
 
+        # other grant access questions
+        elif 'https://login.vk.com/?act=grant_access' in response.content:
+            for url in re.findall(r'"(https:\/\/login.vk.com\/\?act=grant_access[^"]+)"', response.content):
+                if 'cancel' not in url:
+                    response = requests.get(url, cookies=response.cookies)
+                    break
+
         if 'class="oauth_error"' in response.content:
             content = BeautifulSoup(response.content.decode('windows-1251'))
             raise OAuthError(content.find('div', **{'class': 'oauth_error'}).text.encode('utf-8'))
