@@ -64,6 +64,8 @@ class VkontakteAccessToken(BaseAccessToken):
         Protection from security question about end of phone number
         '''
         response = super(VkontakteAccessToken, self).authorize()
+        print response.__dict__
+        print response.request.__dict__
         print response.content.decode('windows-1251')
 
         # login from new place
