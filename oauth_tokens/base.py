@@ -78,12 +78,6 @@ class BaseAccessToken(object):
         log.debug(auth_uri)
 
         response = requests.get(auth_uri, headers=self.headers, cookies=self.cookies)
-        print 'Request: ' + response.request.__dict__
-        print 'Response: ' + response.__dict__
-        print 'Response content: ' + response.content.decode('windows-1251')
-        for history in response.history:
-            print 'History response: ' + history.__dict__
-            print 'History response content: ' + history.content.decode('windows-1251')
         self.cookies = response.cookies
 
         log.debug('Response form dict: %s' % response.__dict__)
@@ -93,12 +87,6 @@ class BaseAccessToken(object):
 
         # submit auth form data
         response = requests.post(action, data, cookies=self.cookies, headers=self.headers)
-        print 'Request: ' + response.request.__dict__
-        print 'Response: ' + response.__dict__
-        print 'Response content: ' + response.content.decode('windows-1251')
-        for history in response.history:
-            print 'History response: ' + history.__dict__
-            print 'History response content: ' + history.content.decode('windows-1251')
         self.cookies = response.cookies
 
         log.debug('Response auth dict: %s' % response.__dict__)

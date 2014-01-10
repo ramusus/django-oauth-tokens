@@ -62,17 +62,12 @@ class VkontakteAccessToken(BaseAccessToken):
         Protection from security question about end of phone number
         '''
         response = super(VkontakteAccessToken, self).authorize()
-        print 'Request: '
-        print response.request.__dict__
-        print 'Response: '
-        print response.__dict__
-        print 'Response content: '
-        print response.content.decode('windows-1251')
+        print 'Request: %s' % response.request.__dict__
+        print 'Response: %s' % response.__dict__
+        print 'Response content: %s' % response.content.decode('windows-1251')
         for history in response.history:
-            print 'History response: '
-            print history.__dict__
-            print 'History response content: '
-            print history.content.decode('windows-1251')
+            print 'History response: %s' % history.__dict__
+            print 'History response content: %s' % history.content.decode('windows-1251')
 
         # login from new place
         if response.content == 'security breach':
