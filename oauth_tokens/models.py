@@ -41,6 +41,8 @@ class AccessTokenManager(models.Manager):
         Get new token and save it to database for all users in UserCredentials table.
         Сlean database before if OAUTH_TOKENS_HISTORY disabled
         '''
+        from base import OAuthError
+
         if provider not in PROVIDERS:
             raise ValueError("Provider `%s` not in available providers list" % provider)
 
@@ -65,8 +67,8 @@ class AccessTokenManager(models.Manager):
             try:
                 token = token_class(user=user).get()
                 assert token
-            except Exception, e:
-                log.error("Error '%s' while getting new token for provider %s, user %s" % (e, provider, user))
+            except OAuthError, e:
+                log.error("Error '%s' while getting new token for provider %s and user %s" % (e, provider, user))
                 continue
 
             if not HISTORY:

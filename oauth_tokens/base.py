@@ -22,7 +22,8 @@ class BaseAccessToken(object):
     def __init__(self, user=None, tag=None):
         self.user = user
 
-        if not self.user and tag:
+        # we have a tag, no user and there is credentials in db -> find user with tag
+        if not self.user and tag and UserCredentials.objects.count():
             try:
                 self.user = UserCredentials.objects.filter(provider=self.provider, tags__name__in=[tag])[0]
             except KeyError:
