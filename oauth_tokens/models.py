@@ -67,8 +67,8 @@ class AccessTokenManager(models.Manager):
             try:
                 token = token_class(user=user).get()
                 assert token
-            except OAuthError, e:
-                log.error("Error '%s' while getting new token for provider %s and user %s" % (e, provider, user))
+            except (OAuthError, ImproperlyConfigured), e:
+                log.error(u"Error '%s' while getting new token for provider %s and user %s" % (e, provider, user))
                 continue
 
             if not HISTORY:

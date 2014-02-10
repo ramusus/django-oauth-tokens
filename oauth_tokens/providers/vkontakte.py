@@ -63,9 +63,8 @@ class VkontakteAccessToken(BaseAccessToken):
         Protection from security question about end of phone number
         '''
         response = super(VkontakteAccessToken, self).authorize()
-
         if 'Invalid login or password.' in response.content:
-            raise ImproperlyConfigured('Vkontakte auth error: Invalid login or password error')
+            raise ImproperlyConfigured(u'Vkontakte auth error: Invalid login or password error. user: %s, username: %s' % (self.user, self.username))
 
         # login from new place
         if response.content == 'security breach':
