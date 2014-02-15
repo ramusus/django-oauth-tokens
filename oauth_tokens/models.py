@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from django.db import models
+from django.db import models, transaction
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.importlib import import_module
@@ -36,6 +36,7 @@ class AccessTokenManager(models.Manager):
     def filter_active_tokens_of_provider(self, provider, *args, **kwargs):
         return self.filter(provider=provider, expires__gt=datetime.now(), *args, **kwargs).order_by('?')
 
+    @transaction.commit_on_success
     def fetch(self, provider):
         '''
         Get new token and save it to database for all users in UserCredentials table.
@@ -91,11 +92,11 @@ class AccessToken(models.Model):
         ordering = ('-granted',)
         get_latest_by = 'granted'
 
-    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, db_index=True)
     granted = models.DateTimeField(auto_now=True)
 
     access_token = models.CharField(max_length=500)
-    expires = models.DateTimeField(null=True, blank=True)
+    expires = models.DateTimeField(null=True, blank=True, db_index=True)
     token_type = models.CharField(max_length=200, null=True, blank=True)
     refresh_token = models.CharField(max_length=200, null=True, blank=True)
     scope = models.CharField(max_length=200, null=True, blank=True)
