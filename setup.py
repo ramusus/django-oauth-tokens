@@ -18,7 +18,7 @@ setup(
     ],
     install_requires=[
         'django',
-        'requests',
+        'requests==1.2.0', # newer versions has blank cookies in case of VK authorization
         'BeautifulSoup',
         'tyoi.OAuth2',
         'django-taggit',
