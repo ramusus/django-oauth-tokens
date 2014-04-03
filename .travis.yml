@@ -14,7 +14,7 @@ install:
   - DJANGO_VER=$(./travis_django_version.py $DJANGO)
   - pip install $DJANGO_VER
   - pip install coveralls
-  - pip install . --allow-external
+  - pip install . --allow-external tyoi.OAuth2
 script:
   - django-admin.py --version
   - coverage run --source=oauth_tokens quicktest.py oauth_tokens
