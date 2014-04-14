@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from tyoi.oauth2 import AccessTokenRequest, AccessTokenRequestError, AccessTokenResponseError
-from tyoi.oauth2.grants import AuthorizationCode, ClientCredentials
+from tyoi.oauth2.grants import AuthorizationCode, ClientCredentials, RefreshToken
 from tyoi.oauth2.authenticators import ClientPassword
 from urlparse import urlparse
 from models import UserCredentials
@@ -119,6 +119,10 @@ class BaseAccessToken(object):
         params = dict([part.split('=') for part in part.split('&')])
         return params['code'] if 'code' in params else None
 
+    def refresh(self, refresh_token, scope):
+        grant = RefreshToken(refresh_token, scope)
+        return self.send_grant_request(grant)
+
     def get(self):
         '''
         Get new token from provider
@@ -154,7 +158,9 @@ class BaseAccessToken(object):
         log.debug('Code: %s' % code)
 
         grant = AuthorizationCode(code, self.return_to)
-#       grant = ClientCredentials(scope='32768')
+        return self.send_grant_request(grant)
+
+    def send_grant_request(self, grant):
         authenticator = ClientPassword(self.client_id, self.client_secret)
         oauth_request = AccessTokenRequest(authenticator, grant, self.access_token_url)
 
@@ -172,5 +178,3 @@ class BaseAccessToken(object):
         except Exception, e:
             log.error('Error: %s' % e)
             return False
-
-        return False

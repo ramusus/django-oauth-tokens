@@ -13,10 +13,14 @@ HISTORY = getattr(settings, 'OAUTH_TOKENS_HISTORY', False)
 PROVIDERS = getattr(settings, 'OAUTH_TOKENS_PROVIDERS', {
     'vkontakte': 'oauth_tokens.providers.vkontakte.VkontakteAccessToken',
     'facebook': 'oauth_tokens.providers.facebook.FacebookAccessToken',
+    'odnoklassniki': 'oauth_tokens.providers.odnoklassniki.OdnoklassnikiAccessToken',
 })
 PROVIDER_CHOICES = [((provider, provider.title())) for provider in PROVIDERS.keys()]
 
 class AccessTokenGettingError(Exception):
+    pass
+
+class AccessTokenRefreshingError(Exception):
     pass
 
 class AccessTokenManager(models.Manager):
@@ -36,13 +40,7 @@ class AccessTokenManager(models.Manager):
     def filter_active_tokens_of_provider(self, provider, *args, **kwargs):
         return self.filter(provider=provider, expires__gt=datetime.now(), *args, **kwargs).order_by('?')
 
-    @transaction.commit_on_success
-    def fetch(self, provider):
-        '''
-        Get new token and save it to database for all users in UserCredentials table.
-        Сlean database before if OAUTH_TOKENS_HISTORY disabled
-        '''
-        from base import OAuthError
+    def get_token_class(self, provider):
 
         if provider not in PROVIDERS:
             raise ValueError("Provider `%s` not in available providers list" % provider)
@@ -54,6 +52,41 @@ class AccessTokenManager(models.Manager):
             token_class = getattr(import_module(module), path[-1])
         except ImportError:
             raise ImproperlyConfigured("Impossible to find access token class with path %s" % PROVIDERS[provider])
+
+        return token_class
+
+    def refresh(self, provider):
+        '''
+        Refresh tokens and save as new save it to database
+        '''
+        tokens = AccessToken.objects.filter(provider=provider).order_by('-id')
+
+        access_tokens = []
+        # TODO: remove limit for queryset, but handle behaviour with old accesstokens
+        for token in tokens[:1]:
+            token_class = self.get_token_class(provider)
+            new_token = token_class().refresh(token.refresh_token, scope=token.scope)
+
+            access_token = self.model(provider=provider, user=token.user)
+            access_token.__dict__.update(new_token.__dict__)
+            access_token.refresh_token = token.refresh_token
+            access_token.save()
+            access_tokens += [access_token]
+
+        if len(access_tokens) == 0:
+            raise AccessTokenRefreshingError("No tokens refreshed for provider %s" % provider)
+
+        return access_tokens
+
+    @transaction.commit_on_success
+    def fetch(self, provider):
+        '''
+        Get new token and save it to database for all users in UserCredentials table.
+        Сlean database before if OAUTH_TOKENS_HISTORY disabled
+        '''
+        from base import OAuthError
+
+        token_class = self.get_token_class(provider)
 
         # walk through all users of current provider in UserCredentials table
         # or try to get user credentials from settings
@@ -81,7 +114,7 @@ class AccessTokenManager(models.Manager):
             access_tokens += [access_token]
 
         if len(access_tokens) == 0:
-            raise AccessTokenGettingError("Error while updating tokens for provider %s" % provider)
+            raise AccessTokenGettingError("No tokens for provider %s" % provider)
 
         return access_tokens
 
