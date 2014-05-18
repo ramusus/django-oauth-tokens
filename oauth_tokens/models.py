@@ -3,6 +3,7 @@ from django.db import models, transaction
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.importlib import import_module
+from tyoi.oauth2 import AccessTokenResponseError
 from taggit.managers import TaggableManager
 from datetime import datetime
 import logging
@@ -65,7 +66,11 @@ class AccessTokenManager(models.Manager):
         # TODO: remove limit for queryset, but handle behaviour with old accesstokens
         for token in tokens[:1]:
             token_class = self.get_token_class(provider)
-            new_token = token_class().refresh(token.refresh_token, scope=token.scope)
+
+            try:
+                new_token = token_class().refresh(token.refresh_token, scope=token.scope)
+            except AccessTokenResponseError:
+                return self.fetch(provider)
 
             access_token = self.model(provider=provider, user=token.user)
             access_token.__dict__.update(new_token.__dict__)

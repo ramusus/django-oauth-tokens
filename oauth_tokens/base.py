@@ -171,10 +171,10 @@ class BaseAccessToken(object):
         except AccessTokenRequestError, ex:
             log.error('Invalid response from oauth provider [code=%s]' % ex.error_code)
             log.error(u'[start]%s[end]' % (ex.error_description or ex.error_code_description))
-            return False
+            raise
         except AccessTokenResponseError, ex:
             log.error('Invalid response from oauth provider: %s' % ex.message)
-            return False
+            raise
         except Exception, e:
             log.error('Error: %s' % e)
-            return False
+            raise
