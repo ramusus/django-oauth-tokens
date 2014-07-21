@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from django.core.exceptions import ImproperlyConfigured
 from BeautifulSoup import BeautifulSoup
-from oauth_tokens.base import BaseAccessToken, OAuthError
+from oauth_tokens.base import BaseAccessToken, OAuthError, UserAccessError
 import requests
 import re
 import logging
@@ -98,6 +98,11 @@ class VkontakteAccessToken(BaseAccessToken):
         if 'class="oauth_error"' in response.content:
             content = BeautifulSoup(response.content.decode('windows-1251'))
             raise OAuthError(content.find('div', **{'class': 'oauth_error'}).text.encode('utf-8'))
+
+        if 'act=blocked' in response.url:
+            content = BeautifulSoup(response.content)
+            reason = content.find('div', **{'class': re.compile('login_blocked_panel$')}).text
+            raise UserAccessError(u"User %s for provider %s is blocked for reason: %s" % (self.user.name, self.provider, reason))
 
         return response
 

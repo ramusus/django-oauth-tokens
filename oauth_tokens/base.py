@@ -13,6 +13,9 @@ log = logging.getLogger('oauth_tokens')
 class OAuthError(Exception):
     pass
 
+class UserAccessError(Exception):
+    pass
+
 class BaseAccessToken(object):
 
     user = None
