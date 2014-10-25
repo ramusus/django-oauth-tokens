@@ -7,7 +7,8 @@ class AccessTokenAdmin(admin.ModelAdmin):
     list_filter = ('provider',)
 
 class UserCredentialsAdmin(admin.ModelAdmin):
-    list_display = ('name', 'provider', 'active')
+    list_display = ('name', 'provider', 'username', 'active')
+    list_filter = ('provider',)
 
 admin.site.register(AccessToken, AccessTokenAdmin)
 admin.site.register(UserCredentials, UserCredentialsAdmin)

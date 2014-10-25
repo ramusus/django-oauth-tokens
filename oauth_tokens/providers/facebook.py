@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from django.core.exceptions import ImproperlyConfigured
 from BeautifulSoup import BeautifulSoup
-from oauth_tokens.base import BaseAccessToken
+from oauth_tokens.base import BaseAccessToken, AccountLocked
+from xml.sax import saxutils as su
+import urllib
 import cgi
 import logging
 import requests
@@ -17,8 +19,8 @@ class FacebookAccessToken(BaseAccessToken):
     redirect_uri = 'http://www.facebook.com/page_not_found'
     response_decoder = lambda self,x: dict(cgi.parse_qsl(x))
     headers = {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux i686) AppleWebKit/536.11 (KHTML, like Gecko) Ubuntu/12.04 Chromium/20.0.1132.47 Chrome/20.0.1132.47 Safari/536.11',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/34.0.1847.116 Chrome/34.0.1847.116 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Charset': 'windows-1251,utf-8;q=0.7,*;q=0.3',
         'Accept-Encoding': 'gzip,deflate,sdch',
         'Accept-Language': 'en-US,en;q=0.8',
@@ -59,13 +61,18 @@ class FacebookAccessToken(BaseAccessToken):
         '''
         Parse page with permissions form and return tuple with (method, form action, form submit parameters)
         '''
-        if 'Your Account Is Temporarily Locked' in page_content:
-            raise ImproperlyConfigured("Facebook errored 'Your account is temporarily locked.'. Try to login via web browser")
+        if 'Your Account Is Temporarily Locked' in page_content or 'Ваш аккаунт временно заблокирован' in page_content:
+            raise AccountLocked("Facebook errored 'Your account is temporarily locked.'. Try to login via web browser")
 
-        if '{"__html":"\u003Cform class=\\"oauth _s\\"' in page_content:
-            matches = re.findall(r'{"__html":"(.+)"}', page_content)
-            content = BeautifulSoup(matches[0].replace('\u003C','<').replace('\\',''))
-            form = content.find('form', {'id': 'platformDialogForm'})
+        if 'Redirecting...' in page_content:
+            matches =  re.findall(r'<meta http-equiv="refresh" content="0;url=(.+)" /></head>', page_content)
+            url = su.unescape(urllib.unquote(matches[0]))
+            return ('get', url, {})
+
+        if '{"__html":"\u003Cform' in page_content:
+            matches =  re.findall(r'{"__html":"(\\u003Cform.+/form>)"},', page_content)
+            content = BeautifulSoup(matches[0].decode("unicode-escape").replace('\/', '/'))
+            form = content.find('form')
         else:
             content = BeautifulSoup(page_content)
             form = content.find('form', {'id': 'uiserver_form'})
@@ -105,6 +112,6 @@ class FacebookAccessToken(BaseAccessToken):
             raise ImproperlyConfigured("You must specify URL '%s' in your facebook application settings" % self.redirect_uri)
 
         if 'Your account is temporarily locked.' in response.content:
-            raise ImproperlyConfigured("Facebook errored 'Your account is temporarily locked.'. Try to login via web browser")
+            raise AccountLocked("Facebook errored 'Your account is temporarily locked.'. Try to login via web browser")
 
         return response
