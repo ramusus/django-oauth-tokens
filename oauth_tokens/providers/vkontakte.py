@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-from django.core.exceptions import ImproperlyConfigured
 from BeautifulSoup import BeautifulSoup
-from oauth_tokens.base import BaseAccessToken, OAuthError, UserAccessError
+from oauth_tokens.base import BaseAccessToken, OAuthError, UserAccessError, LoginPasswordError
 import requests
 import re
 import logging
@@ -64,7 +63,7 @@ class VkontakteAccessToken(BaseAccessToken):
         '''
         response = super(VkontakteAccessToken, self).authorize()
         if 'Invalid login or password.' in response.content:
-            raise ImproperlyConfigured(u'Vkontakte auth error: Invalid login or password error. user: %s, username: %s' % (self.user, self.username))
+            raise LoginPasswordError(u'Vkontakte auth error: Invalid login or password error. user: %s, username: %s' % (self.user, self.username))
 
         # login from new place
         if response.content == 'security breach':

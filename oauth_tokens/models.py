@@ -89,7 +89,7 @@ class AccessTokenManager(models.Manager):
         Get new token and save it to database for all users in UserCredentials table.
         Сlean database before if OAUTH_TOKENS_HISTORY disabled
         '''
-        from base import OAuthError, UserAccessError
+        from base import OAuthError, UserAccessError, AccountLocked, LoginPasswordError
 
         token_class = self.get_token_class(provider)
 
@@ -105,8 +105,13 @@ class AccessTokenManager(models.Manager):
 
             try:
                 token = token_class(user=user).get()
-            except (OAuthError, ImproperlyConfigured, UserAccessError), e:
+            except (OAuthError, AccountLocked, UserAccessError), e:
                 log.error(u"Error '%s' while getting new token for provider %s and user %s" % (e, provider, user))
+                continue
+            except LoginPasswordError, e:
+                log.error(u"Error '%s' while getting new token for provider %s and user %s" % (e, provider, user))
+                user.active = False
+                user.save()
                 continue
 
             if not HISTORY:

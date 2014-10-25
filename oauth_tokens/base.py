@@ -16,6 +16,12 @@ class OAuthError(Exception):
 class UserAccessError(Exception):
     pass
 
+class LoginPasswordError(Exception):
+    pass
+
+class AccountLocked(Exception):
+    pass
+
 class BaseAccessToken(object):
 
     user = None
@@ -156,7 +162,7 @@ class BaseAccessToken(object):
 
             code = self.get_response_code(response.url)
             if not code:
-                raise Exception("Vkontakte OAuth response didn't return code parameter")
+                raise Exception("OAuth response didn't return code parameter")
 
         log.debug('Code: %s' % code)
 
