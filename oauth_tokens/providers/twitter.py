@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from django.core.exceptions import ImproperlyConfigured
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 from oauth_tokens.base import BaseAccessToken, AccountLocked
 from xml.sax import saxutils as su
 import urllib
@@ -16,14 +16,14 @@ class TwitterAccessToken(BaseAccessToken):
     provider = 'twitter'
     authenticate_url = 'https://twitter.com/login'
     access_token_url = 'https://api.twitter.com/oauth/access_token'
-    redirect_uri = 'https://twitter.com/'
-    response_decoder = lambda self,x: dict(cgi.parse_qsl(x))
+    redirect_uri = '/'
+    response_decoder = lambda self, x: dict(cgi.parse_qsl(x))
     headers = {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:33.0) Gecko/20100101 Firefox/33.0',
         'Accept': 'text/html',
-        'Accept-Charset': 'utf-8',
-        'Accept-Encoding': 'gzip,deflate,sdch',
-        'Accept-Language': 'en-US,en;q=0.8',
+        #'Accept-Charset': 'utf-8',
+        'Accept-Encoding': 'gzip, deflate',
+        'Accept-Language': 'en-US;q=0.8,en;q=0.5',
         'Connection': 'keep-alive',
         'Host': 'twitter.com',
     }
@@ -34,14 +34,14 @@ class TwitterAccessToken(BaseAccessToken):
         '''
         content = BeautifulSoup(page_content)
 
-        form = content.find('form')
+        form = content.find('form', class_='signin')
         if not form:
             raise Exception('There is no any form in response')
 
         method, action, data = self.get_form_attributes(form)
 
-        data['email'] = self.username
-        data['pass'] = self.password
+        data['session[username_or_email]'] = self.username
+        data['session[password]'] = self.password
 
         return (method, action, data)
 
@@ -65,12 +65,12 @@ class TwitterAccessToken(BaseAccessToken):
             raise AccountLocked("Twitter errored 'Your account is temporarily locked.'. Try to login via web browser")
 
         if 'Redirecting...' in page_content:
-            matches =  re.findall(r'<meta http-equiv="refresh" content="0;url=(.+)" /></head>', page_content)
+            matches = re.findall(r'<meta http-equiv="refresh" content="0;url=(.+)" /></head>', page_content)
             url = su.unescape(urllib.unquote(matches[0]))
             return ('get', url, {})
 
         if '{"__html":"\u003Cform' in page_content:
-            matches =  re.findall(r'{"__html":"(\\u003Cform.+/form>)"},', page_content)
+            matches = re.findall(r'{"__html":"(\\u003Cform.+/form>)"},', page_content)
             content = BeautifulSoup(matches[0].decode("unicode-escape").replace('\/', '/'))
             form = content.find('form')
         else:
@@ -99,19 +99,6 @@ class TwitterAccessToken(BaseAccessToken):
         Handling specific errors
         '''
         response = super(TwitterAccessToken, self).authorize()
-
-        if 'You are trying too often' in response.content:
-            # TODO: fix it
-            log.error("Twitter authorization request returns error 'You are trying too often'")
-            raise Exception("Twitter authorization request returns error 'You are trying too often'")
-        if 'Cookies Required' in response.content:
-            response = requests.get('http://twitter.com')
-            self.cookies = response.cookies
-            self.authorize()
-        if 'API Error Code: 191' in response.content:
-            raise ImproperlyConfigured("You must specify URL '%s' in your twitter application settings" % self.redirect_uri)
-
-        if 'Your account is temporarily locked.' in response.content:
-            raise AccountLocked("Twitter errored 'Your account is temporarily locked.'. Try to login via web browser")
+        # TODO: Add some errors
 
         return response
