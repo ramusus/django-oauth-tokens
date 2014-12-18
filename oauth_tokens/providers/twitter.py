@@ -1,104 +1,71 @@
 # -*- coding: utf-8 -*-
-from django.core.exceptions import ImproperlyConfigured
-from bs4 import BeautifulSoup
-from oauth_tokens.base import BaseAccessToken, AccountLocked
-from xml.sax import saxutils as su
-import urllib
 import cgi
 import logging
-import requests
 import re
+import urllib
+from xml.sax import saxutils as su
+
+from bs4 import BeautifulSoup
+from django.core.exceptions import ImproperlyConfigured
+import requests
+
+from ..base import AccessTokenBase, AuthRequestBase, AccountLocked
 
 log = logging.getLogger('oauth_tokens')
 
-class TwitterAccessToken(BaseAccessToken):
 
+class TwitterAuthRequest(AuthRequestBase):
+
+    '''
+    Twitter authorized request class
+    '''
     provider = 'twitter'
-    authenticate_url = 'https://twitter.com/login'
-    access_token_url = 'https://api.twitter.com/oauth/access_token'
-    redirect_uri = '/'
-    response_decoder = lambda self, x: dict(cgi.parse_qsl(x))
+    form_action_domain = 'https://twitter.com'
+    login_url = 'https://twitter.com/login'
+    authorize_form_attributes = {"class_": "signin"}
     headers = {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:33.0) Gecko/20100101 Firefox/33.0',
-        'Accept': 'text/html',
-        #'Accept-Charset': 'utf-8',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Origin': 'https://api.twitter.com',
+        'X-DevTools-Emulate-Network-Conditions-Client-Id': 'F17D2F59-8F26-46F6-8C2C-E52E8CA7B56D',
+        'User-Agent': 'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/39.0.2171.65 Chrome/39.0.2171.65 Safari/537.36',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Referer': 'https://api.twitter.com/oauth/authorize?oauth_token=prWUDG4s5HpwEnPY3Pun1CDgsXSVlfIU',
         'Accept-Encoding': 'gzip, deflate',
-        'Accept-Language': 'en-US;q=0.8,en;q=0.5',
-        'Connection': 'keep-alive',
-        'Host': 'twitter.com',
+        'Accept-Language': 'en-US,en;q=0.8',
     }
 
-    def parse_auth_form(self, page_content):
-        '''
-        Parse page with auth form and return tuple with (method, form action, form submit parameters)
-        '''
-        content = BeautifulSoup(page_content)
-
-        form = content.find('form', class_='signin')
-        if not form:
-            raise Exception('There is no any form in response')
-
-        method, action, data = self.get_form_attributes(form)
-
+    def add_data_credentials(self, data):
         data['session[username_or_email]'] = self.username
         data['session[password]'] = self.password
+        if 'cancel' in data:
+            del data['cancel']
 
-        return (method, action, data)
 
-    def get_form_attributes(self, form):
-        data = {}
-        for input in form.findAll('input'):
-            if input.get('name'):
-                data[input.get('name')] = input.get('value')
+class TwitterAccessToken(AccessTokenBase):
 
-        action = form.get('action')
-        if action[0] == '/':
-            action = 'https://twitter.com' + action
+    provider = 'twitter'
+    type = 'oauth1'
 
-        return (form.get('method').lower(), action, data)
+    authorize_url = 'https://api.twitter.com/oauth/authorize'
+    access_token_url = 'https://api.twitter.com/oauth/access_token'
+    request_token_url = 'https://api.twitter.com/oauth/request_token'
 
-    def parse_permissions_form(self, page_content):
-        '''
-        Parse page with permissions form and return tuple with (method, form action, form submit parameters)
-        '''
-        if 'Your Account Is Temporarily Locked' in page_content or 'Ваш аккаунт временно заблокирован' in page_content:
-            raise AccountLocked("Twitter errored 'Your account is temporarily locked.'. Try to login via web browser")
+    auth_request_class = TwitterAuthRequest
 
-        if 'Redirecting...' in page_content:
-            matches = re.findall(r'<meta http-equiv="refresh" content="0;url=(.+)" /></head>', page_content)
-            url = su.unescape(urllib.unquote(matches[0]))
-            return ('get', url, {})
+    delimeter = '#####'
 
-        if '{"__html":"\u003Cform' in page_content:
-            matches = re.findall(r'{"__html":"(\\u003Cform.+/form>)"},', page_content)
-            content = BeautifulSoup(matches[0].decode("unicode-escape").replace('\/', '/'))
-            form = content.find('form')
-        else:
-            content = BeautifulSoup(page_content)
-            form = content.find('form', {'id': 'uiserver_form'})
+    def authorization_get_request(self):
+        authorization_url = self.oauth.authorization_url(self.authorize_url)
+        return self.auth_request.session.get(url=authorization_url)  # twitter don't like headers here
 
-        if not form:
-            raise Exception('There is no any form in response')
+    def authorization_post_request(self, response):
+        response = super(TwitterAccessToken, self).authorization_post_request(response)
 
-        data = {}
-        for input in form.findAll('input'):
-            if input.get('name'):
-                data[input.get('name')] = input.get('value')
-
-        if 'cancel_clicked' in data:
-            del data['cancel_clicked']
-
-        action = form.get('action')
-        if action[0] == '/':
-            action = 'https://twitter.com' + action
-
-        return (form.get('method').lower(), action, data)
-
-    def authorize(self):
-        '''
-        Handling specific errors
-        '''
-        response = super(TwitterAccessToken, self).authorize()
-        # TODO: Add some errors
+        if not "You've granted access to" in response.content:
+            raise Exception("Wrong response on authorization post request")
 
         return response
+
+    def process_authorization_response(self, response):
+        bs = BeautifulSoup(response.content)
+        return bs.find('code').text

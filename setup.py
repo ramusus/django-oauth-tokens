@@ -12,12 +12,12 @@ setup(
     license='BSD',
     packages=find_packages(),
     include_package_data=True,
-    zip_safe=False, # because we're including media that Django needs
+    zip_safe=False,  # because we're including media that Django needs
     install_requires=[
         'django',
-        'requests==1.2.0', # newer versions has blank cookies in case of VK authorization
-        'BeautifulSoup4',
-        'tyoi.OAuth2',
+        'requests',
+        'requests_oauthlib',
+        'beautifulsoup4',
         'django-taggit',
     ],
     classifiers=[

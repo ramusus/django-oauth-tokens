@@ -1,33 +1,44 @@
 # -*- coding: utf-8 -*-
-from django.db import models, transaction
-from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
-from django.utils.importlib import import_module
-from tyoi.oauth2 import AccessTokenResponseError
-from taggit.managers import TaggableManager
 from datetime import datetime
 import logging
+
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+from django.db import models, transaction
+from django.utils.importlib import import_module
+from taggit.managers import TaggableManager
+from tyoi.oauth2 import AccessTokenResponseError
 
 log = logging.getLogger('oauth_tokens')
 
 HISTORY = getattr(settings, 'OAUTH_TOKENS_HISTORY', False)
-PROVIDERS = getattr(settings, 'OAUTH_TOKENS_PROVIDERS', {
-    'vkontakte': 'oauth_tokens.providers.vkontakte.VkontakteAccessToken',
-    'facebook': 'oauth_tokens.providers.facebook.FacebookAccessToken',
-    'odnoklassniki': 'oauth_tokens.providers.odnoklassniki.OdnoklassnikiAccessToken',
-})
-PROVIDER_CHOICES = [((provider, provider.title())) for provider in PROVIDERS.keys()]
+PROVIDERS = [
+    'vkontakte',
+    'facebook',
+    'twitter',
+    'odnoklassniki',
+]
+PROVIDER_CHOICES = [((provider, provider.title())) for provider in PROVIDERS]
+ACCESS_TOKENS_CLASSES = getattr(settings, 'OAUTH_TOKENS_CLASSES',
+                                dict([(p, 'oauth_tokens.providers.odnoklassniki.%sAccessToken' % p.title())
+                                      for p in PROVIDERS])
+                                )
+
 
 class AccessTokenGettingError(Exception):
     pass
 
+
 class AccessTokenRefreshingError(Exception):
     pass
 
+
 class AccessTokenManager(models.Manager):
+
     '''
     Defautl manager for AccessToken for retrieving token
     '''
+
     def filter(self, *args, **kwargs):
         '''
         Optional filter by user's `tag`
@@ -47,12 +58,13 @@ class AccessTokenManager(models.Manager):
             raise ValueError("Provider `%s` not in available providers list" % provider)
 
         try:
-            path = PROVIDERS[provider].split('.')
+            path = ACCESS_TOKENS_CLASSES[provider].split('.')
             module = '.'.join(path[:-1])
             class_name = path[-1]
             token_class = getattr(import_module(module), path[-1])
         except ImportError:
-            raise ImproperlyConfigured("Impossible to find access token class with path %s" % PROVIDERS[provider])
+            raise ImproperlyConfigured("Impossible to find access token class with path %s" %
+                                       ACCESS_TOKENS_CLASSES[provider])
 
         return token_class
 
@@ -127,7 +139,9 @@ class AccessTokenManager(models.Manager):
 
         return access_tokens
 
+
 class AccessToken(models.Model):
+
     class Meta:
         verbose_name = 'Oauth access token'
         verbose_name_plural = 'Oauth access tokens'
@@ -149,6 +163,7 @@ class AccessToken(models.Model):
 
     def __str__(self):
         return '#%s' % self.access_token
+
 
 class UserCredentials(models.Model):
 

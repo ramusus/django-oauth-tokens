@@ -1,13 +1,20 @@
 # -*- coding: utf-8 -*-
-from BeautifulSoup import BeautifulSoup
-from oauth_tokens.base import BaseAccessToken, OAuthError, UserAccessError, LoginPasswordError
-import requests
-import re
 import logging
+import re
+
+from bs4 import BeautifulSoup
+import requests
+
+from ..base import BaseAccessToken, AccessTokenBase, OAuthError, UserAccessError, LoginPasswordError, AuthRequestBase
 
 log = logging.getLogger('oauth_tokens')
 
+
 class VkontakteAccessToken(BaseAccessToken):
+
+    '''
+    DEPRECATED CLASS
+    '''
 
     provider = 'vkontakte'
     authenticate_url = 'https://api.vk.com/oauth/authorize'
@@ -29,6 +36,7 @@ class VkontakteAccessToken(BaseAccessToken):
     def parse_auth_form(self, page_content):
         '''
         Parse page with auth form and return tuple with (method, form action, form submit parameters)
+        DEPRECATED
         '''
         content = BeautifulSoup(page_content)
 
@@ -60,10 +68,13 @@ class VkontakteAccessToken(BaseAccessToken):
     def authorize(self):
         '''
         Protection from security question about end of phone number
+        DEPRECATED
+        TODO: MOVE TO NEW CLASS AT BOTTOM
         '''
         response = super(VkontakteAccessToken, self).authorize()
         if 'Invalid login or password.' in response.content:
-            raise LoginPasswordError(u'Vkontakte auth error: Invalid login or password error. user: %s, username: %s' % (self.user, self.username))
+            raise LoginPasswordError(
+                u'Vkontakte auth error: Invalid login or password error. user: %s, username: %s' % (self.user, self.username))
 
         # login from new place
         if response.content == 'security breach':
@@ -101,25 +112,134 @@ class VkontakteAccessToken(BaseAccessToken):
         if 'act=blocked' in response.url:
             content = BeautifulSoup(response.content)
             reason = content.find('div', **{'class': re.compile('login_blocked_panel$')}).text
-            raise UserAccessError(u"User %s for provider %s is blocked for reason: %s" % (self.user.name, self.provider, reason))
+            raise UserAccessError(u"User %s for provider %s is blocked for reason: %s" %
+                                  (self.user.name, self.provider, reason))
 
         return response
 
     def authorized_request(self, method='get', **kwargs):
         '''
         Protection from security question about end of phone number
+        DEPRECATED
         '''
         response = super(VkontakteAccessToken, self).authorized_request(method=method, **kwargs)
 
         if '<input name="code" id="code" type="text" class="text"' in response.content:
-            m = re.findall(r"var params = {act: 'security_check', code: ge\('code'\).value, to: '([^']+)', al_page: '4', hash: '([^']+)'};", response.content)
+            m = re.findall(
+                r"var params = {act: 'security_check', code: ge\('code'\).value, to: '([^']+)', al_page: '4', hash: '([^']+)'};", response.content)
 
             if len(m) == 0:
                 raise Exception("Impossible to find security check parameters")
 
             response = requests.post('http://vk.com/login.php',
-                headers = {'X-Requested-With': 'XMLHttpRequest'},
-                cookies = response.cookies,
-                data = {'act': 'security_check', 'code': self.get_setting('additional'), 'to': m[0][0], 'al_page': '4', 'hash': m[0][1]})
+                                     headers={'X-Requested-With': 'XMLHttpRequest'},
+                                     cookies=response.cookies,
+                                     data={'act': 'security_check', 'code': self.get_setting('additional'), 'to': m[0][0], 'al_page': '4', 'hash': m[0][1]})
 
         return response
+
+
+class VkontakteAuthRequest(AuthRequestBase):
+
+    '''
+    Vkontakte authorized request class
+    '''
+    provider = 'vkontakte'
+    form_action_domain = 'https://vk.com'
+    login_url = 'http://vk.com/login.php'
+    headers = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Encoding': 'gzip,deflate,sdch',
+        'Accept-Language': 'en-US,en;q=0.8',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Pragma': 'no-cache',
+        'Referer': 'http://vk.com/',
+        'User-Agent': 'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/30.0.1599.114 Chrome/30.0.1599.114 Safari/537.36',
+    }
+
+    def add_data_credentials(self, data):
+        data['email'] = self.username
+        data['pass'] = self.password
+
+    def authorized_request(self, method='get', **kwargs):
+        '''
+        Protection with security question about part of phone number
+        '''
+        response = super(VkontakteAuthRequest, self).authorized_request(method=method, **kwargs)
+
+        if '<input name="code" id="code" type="text" class="text"' in response.content:
+            m = re.findall(
+                r"var params = {act: 'security_check', code: ge\('code'\).value, to: '([^']+)', al_page: '4', hash: '([^']+)'};", response.content)
+
+            if len(m) == 0:
+                raise Exception("Impossible to find security check parameters")
+
+            additional = self.get_setting('additional')
+            response = requests.post(self.login_url,
+                                     headers={'X-Requested-With': 'XMLHttpRequest'},
+                                     cookies=response.cookies,
+                                     data={'act': 'security_check', 'code': additional, 'to': m[0][0], 'al_page': '4', 'hash': m[0][1]})
+
+        return response
+
+    def authorize(self):
+        '''
+        TODO: cover with tests for each condition
+        '''
+        response = super(VkontakteAuthRequest, self).authorize()
+
+        if 'Invalid login or password.' in response.content:
+            raise LoginPasswordError(
+                u'Vkontakte auth error: Invalid login or password error. username: %s' % self.username)
+
+        if 'act=blocked' in response.url:
+            content = BeautifulSoup(response.content)
+            reason = content.find('div', **{'class': re.compile('login_blocked_panel$')}).text
+            raise UserAccessError(u"User %s for provider %s is blocked for reason: %s" %
+                                  (self.user.name, self.provider, reason))
+
+        return response
+
+
+class VkontakteAccessTokenNew(AccessTokenBase):
+
+    provider = 'vkontakte'
+    type = 'oauth2'
+
+    authorize_url = 'https://api.vk.com/oauth/authorize'
+    access_token_url = 'https://api.vk.com/oauth/access_token'
+
+    redirect_uri = 'https://api.vk.com/blank.html'
+
+    auth_request_class = VkontakteAuthRequest
+
+    def process_authorization_response(self, response):
+        url = self.get_url_from_response(response)
+
+        if url:
+            return url
+        elif response.status_code == 200 and 'https://oauth.vk.com/authorize' in response.url:
+            # need to approve new permissions
+            matches = re.findall('location.href = "([^"]+https=1)"', response.content)
+            if len(matches) != 1:
+                log.error("Error while parsing permissions page contents: %s" % response.content)
+                raise Exception('Error while parsing permissions page contents')
+
+            # without headers, otherwise bad response:
+            # response.url == u'https://oauth.vk.com/error?err=2'
+            # response.content == {"error":"invalid_request","error_description":"Security Error"}
+            response_perm = self.auth_request.session.get(url=matches[0])
+            url = self.get_url_from_response(response_perm)
+            if url:
+                return url
+
+        # TODO: handle this branch
+        import ipdb
+        ipdb.set_trace()
+
+    def get_url_from_response(self, response):
+        if response.status_code == 200 and 'code=' in response.url:
+            return response.url.replace('#', '?')
+        else:
+            return None

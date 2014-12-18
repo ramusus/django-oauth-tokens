@@ -1,12 +1,18 @@
-from models import AccessToken, UserCredentials
-from datetime import datetime, timedelta
+
+from datetime import timedelta
+
+from django.utils import timezone
 import factory
+
+from .models import AccessToken, UserCredentials
+
 
 class UserCredentialsFactory(factory.DjangoModelFactory):
     FACTORY_FOR = UserCredentials
+
 
 class AccessTokenFactory(factory.DjangoModelFactory):
     FACTORY_FOR = AccessToken
 
     user = factory.SubFactory(UserCredentialsFactory)
-    expires = datetime.now()+timedelta(1)
+    expires = timezone.now() + timedelta(1)
