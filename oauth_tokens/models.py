@@ -9,6 +9,9 @@ from django.utils.importlib import import_module
 from taggit.managers import TaggableManager
 from tyoi.oauth2 import AccessTokenResponseError
 
+from .exceptions import AccountLocked, LoginPasswordError
+
+
 log = logging.getLogger('oauth_tokens')
 
 HISTORY = getattr(settings, 'OAUTH_TOKENS_HISTORY', False)
@@ -20,7 +23,7 @@ PROVIDERS = [
 ]
 PROVIDER_CHOICES = [((provider, provider.title())) for provider in PROVIDERS]
 ACCESS_TOKENS_CLASSES = getattr(settings, 'OAUTH_TOKENS_CLASSES',
-                                dict([(p, 'oauth_tokens.providers.odnoklassniki.%sAccessToken' % p.title())
+                                dict([(p, 'oauth_tokens.providers.%s.%sAccessToken' % (p, p.title()))
                                       for p in PROVIDERS])
                                 )
 
@@ -52,6 +55,30 @@ class AccessTokenManager(models.Manager):
     def filter_active_tokens_of_provider(self, provider, *args, **kwargs):
         return self.filter(provider=provider, expires__gt=datetime.now(), *args, **kwargs).order_by('?')
 
+    def get_token(self, provider, tag=None):
+        '''
+        Returns access token instance. If tag argument provided or
+        settings OAUTH_TOKENS_%s_USERNAME is not defined look up for credentials in DB
+        '''
+        token_class = self.get_token_class(provider)
+
+        if tag is None and getattr(settings, 'OAUTH_TOKENS_%s_USERNAME' % provider.upper(), None):
+            return token_class()
+
+        qs_users = UserCredentials.objects.filter(provider=provider)
+        if tag:
+            qs_users = qs_users.filter(tags__name__in=[tag])
+
+        try:
+            user = qs_users[0]
+        except IndexError:
+            raise Exception("User with tag %s for provider %s does not exist" % (tag, provider))
+
+        return self.get_token_by_user(token_class, user)
+
+    def get_token_by_user(self, token_class, user):
+        return token_class(username=user.username, password=user.password, additional=user.additional)
+
     def get_token_class(self, provider):
 
         if provider not in PROVIDERS:
@@ -80,7 +107,7 @@ class AccessTokenManager(models.Manager):
             token_class = self.get_token_class(provider)
 
             try:
-                new_token = token_class().refresh(token.refresh_token, scope=token.scope)
+                new_token = token_class().refresh(token)
             except AccessTokenResponseError:
                 return self.fetch(provider)
 
@@ -101,8 +128,6 @@ class AccessTokenManager(models.Manager):
         Get new token and save it to database for all users in UserCredentials table.
         Сlean database before if OAUTH_TOKENS_HISTORY disabled
         '''
-        from base import OAuthError, UserAccessError, AccountLocked, LoginPasswordError
-
         token_class = self.get_token_class(provider)
 
         # walk through all users of current provider in UserCredentials table
@@ -116,8 +141,8 @@ class AccessTokenManager(models.Manager):
         for user in users:
 
             try:
-                token = token_class(user=user).get()
-            except (OAuthError, AccountLocked, UserAccessError), e:
+                token = self.get_token_by_user(token_class, user).get()
+            except AccountLocked, e:
                 log.error(u"Error '%s' while getting new token for provider %s and user %s" % (e, provider, user))
                 continue
             except LoginPasswordError, e:

@@ -1,17 +1,8 @@
 # -*- coding: utf-8 -*-
-import cgi
-import logging
-import re
-import urllib
-from xml.sax import saxutils as su
-
 from bs4 import BeautifulSoup
-from django.core.exceptions import ImproperlyConfigured
-import requests
 
-from ..base import AccessTokenBase, AuthRequestBase, AccountLocked
-
-log = logging.getLogger('oauth_tokens')
+from ..base import AccessTokenBase, AuthRequestBase
+from ..exceptions import LoginPasswordError, AccountLocked, WrongRedirectUrl
 
 
 class TwitterAuthRequest(AuthRequestBase):
@@ -58,9 +49,7 @@ class TwitterAccessToken(AccessTokenBase):
         authorization_url = self.oauth.authorization_url(self.authorize_url)
         return self.auth_request.session.get(url=authorization_url)  # twitter don't like headers here
 
-    def authorization_post_request(self, response):
-        response = super(TwitterAccessToken, self).authorization_post_request(response)
-
+    def authorization_permissions_request(self, response):
         if not "You've granted access to" in response.content:
             raise Exception("Wrong response on authorization post request")
 
