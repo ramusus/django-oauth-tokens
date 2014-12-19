@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 #from __future__ import unicode_literals
+from datetime import datetime
+
 from django.test import TestCase
+import mock
 import requests
 from taggit.models import Tag
 
@@ -42,6 +45,14 @@ FACEBOOK_USERNAME = '+919665223715'
 FACEBOOK_PASSWORD = 'jcej9EIAQrrptDBy'
 FACEBOOK_NAME = 'Travis Djangov'
 
+oauth2_token_mock_response = {'access_token': 's' * 81,
+                              'refresh_token': 'e' * 41,
+                              'token_type': 'session',
+                              'expires_in': 86301,
+                              'expires_at': 1418746001.153811,
+                              'scope': VKONTAKTE_SCOPE,
+                              'user_id': VKONTAKTE_USER_ID}
+
 
 class OAuthTokensModelTest(TestCase):
 
@@ -49,9 +60,38 @@ class OAuthTokensModelTest(TestCase):
 
     def test_updating_vk(self):
 
-        self.assertEqual(AccessToken.objects.count(), 0)
-        t = AccessToken.objects.fetch('vkontakte')
-        self.assertGreater(AccessToken.objects.count(), 5)
+        settings_temp = dict(OAUTH_TOKENS_VKONTAKTE_ADDITIONAL=VKONTAKTE_ADDITIONAL,
+                             OAUTH_TOKENS_VKONTAKTE_SCOPE=VKONTAKTE_SCOPE,
+                             OAUTH_TOKENS_VKONTAKTE_CLIENT_ID=VKONTAKTE_CLIENT_ID,
+                             OAUTH_TOKENS_VKONTAKTE_CLIENT_SECRET=VKONTAKTE_CLIENT_SECRET)
+
+        with self.settings(**settings_temp):
+            self.assertEqual(AccessToken.objects.count(), 0)
+            t = AccessToken.objects.fetch('vkontakte')
+            self.assertGreater(AccessToken.objects.count(), 5)
+
+    @mock.patch('oauth_tokens.base.AccessTokenBase.get', side_effect=lambda: dict(oauth2_token_mock_response))
+    def test_creating_oauth2_token_model(self, method):
+
+        AccessToken.objects.fetch('vkontakte')
+        token = AccessToken.objects.all()[0]
+
+        self.assertGreater(len(token.access_token), 80)
+        self.assertGreater(len(token.refresh_token), 40)
+        self.assertGreaterEqual(token.expires_in, 86300)
+        self.assertIsInstance(token.expires_at, datetime)
+        self.assertIsInstance(token.granted_at, datetime)
+        self.assertEqual(token.scope, VKONTAKTE_SCOPE)
+        self.assertEqual(token.user_id, VKONTAKTE_USER_ID)
+
+    def test_creating_oauth1_token_model(self):
+
+        UserCredentialsFactory(provider='twitter', username=TWITTER_USERNAME, password=TWITTER_PASSWORD)
+
+        AccessToken.objects.fetch('twitter')
+        token = AccessToken.objects.all()[0]
+
+        self.assertEqual(len(token.access_token.split(TwitterAccessToken.delimeter)), 2)
 
     def test_methods_access_tag(self):
 
@@ -59,8 +99,8 @@ class OAuthTokensModelTest(TestCase):
         user.tags.add(Tag.objects.create(name='ads'))
 
         for i in range(30):
-            AccessTokenFactory.create(provider='vkontakte')
-        access_token = AccessTokenFactory.create(provider='vkontakte', user=user)
+            AccessTokenFactory(provider='vkontakte')
+        access_token = AccessTokenFactory.create(provider='vkontakte', user_credentials=user)
 
         access_tokens = AccessToken.objects.filter_active_tokens_of_provider('vkontakte', tag='ads')
         self.assertEqual(access_tokens.count(), 1)

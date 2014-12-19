@@ -148,7 +148,7 @@ class AccessTokenBase(object, SettingsMixin):
         resource_owner_key = oauth_tokens.get('oauth_token')
         resource_owner_secret = oauth_tokens.get('oauth_token_secret')
 
-        return self.delimeter.join([resource_owner_key, resource_owner_secret])
+        return {'access_token': self.delimeter.join([resource_owner_key, resource_owner_secret])}
 
     def oauth2_get(self):
         '''

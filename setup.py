@@ -19,6 +19,7 @@ setup(
         'requests_oauthlib',
         'beautifulsoup4',
         'django-taggit',
+        'django-annoying',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',

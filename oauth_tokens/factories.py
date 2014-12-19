@@ -14,5 +14,5 @@ class UserCredentialsFactory(factory.DjangoModelFactory):
 class AccessTokenFactory(factory.DjangoModelFactory):
     FACTORY_FOR = AccessToken
 
-    user = factory.SubFactory(UserCredentialsFactory)
-    expires = timezone.now() + timedelta(1)
+    user_credentials = factory.SubFactory(UserCredentialsFactory)
+    expires_at = timezone.now() + timedelta(1)
