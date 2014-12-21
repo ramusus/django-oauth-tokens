@@ -95,16 +95,17 @@ class OAuthTokensModelTest(TestCase):
 
     def test_methods_access_tag(self):
 
-        user = UserCredentials.objects.all()[0]
+        user = UserCredentialsFactory(provider='vkontakte',
+                                      username=VKONTAKTE_USERNAME, password=VKONTAKTE_PASSWORD, additional=VKONTAKTE_ADDITIONAL)
         user.tags.add(Tag.objects.create(name='ads'))
 
         for i in range(30):
             AccessTokenFactory(provider='vkontakte')
-        access_token = AccessTokenFactory.create(provider='vkontakte', user_credentials=user)
+        access_token = AccessTokenFactory(provider='vkontakte', user_credentials=user)
 
         access_tokens = AccessToken.objects.filter_active_tokens_of_provider('vkontakte', tag='ads')
         self.assertEqual(access_tokens.count(), 1)
-        self.assertTrue(access_token in access_tokens)
+        self.assertEqual(access_token, access_tokens[0])
 
     def test_getting_token_by_tag(self):
 
@@ -151,7 +152,7 @@ class FacebookAccessTokenTest(TestCase):
 
     def assertFacebookToken(self, token):
         self.assertEqual(len(token), 4)
-        self.assertGreater(len(token['access_token']), 200)
+        self.assertGreater(len(token['access_token']), 160)
         self.assertGreaterEqual(token['expires_in'], 5000000)
         self.assertGreaterEqual(token['expires_at'], 1423930080.062079)
         self.assertEqual(token['scope'], FACEBOOK_SCOPE)

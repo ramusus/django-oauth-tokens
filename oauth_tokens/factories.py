@@ -10,6 +10,8 @@ from .models import AccessToken, UserCredentials
 class UserCredentialsFactory(factory.DjangoModelFactory):
     FACTORY_FOR = UserCredentials
 
+    active = True
+
 
 class AccessTokenFactory(factory.DjangoModelFactory):
     FACTORY_FOR = AccessToken
