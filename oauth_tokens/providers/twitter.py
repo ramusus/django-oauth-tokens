@@ -43,7 +43,7 @@ class TwitterAccessToken(AccessTokenBase):
 
     auth_request_class = TwitterAuthRequest
 
-    delimeter = '#####'
+    delimeter = '----------'
 
     def authorization_get_request(self):
         authorization_url = self.oauth.authorization_url(self.authorize_url)

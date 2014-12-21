@@ -149,7 +149,7 @@ class AccessTokenManager(models.Manager):
                 continue
 
             if not HISTORY:
-                self.filter(provider=provider, user=user).delete()
+                self.filter(provider=provider, user_credentials=user).delete()
 
             access_token = self.model.objects.create(provider=provider, user_credentials=user, **token)
             access_tokens += [access_token]
