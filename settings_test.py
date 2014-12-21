@@ -1,6 +1,4 @@
 INSTALLED_APPS = (
-    'oauth_tokens',
-    'm2m_history',
     'taggit',
 )
 
