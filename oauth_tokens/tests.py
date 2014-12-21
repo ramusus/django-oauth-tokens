@@ -21,6 +21,7 @@ TWITTER_USERNAME = 'baranus1@mail.ru'
 TWITTER_PASSWORD = 'jcej9EIAQrrptDBy'
 TWITTER_NAME = 'Travis Djangov'
 TWITTER_SCREEN_NAME = '@travis_djangov'
+TWITTER_USER_ID = 2931210558
 
 VKONTAKTE_CLIENT_ID = 3430034
 VKONTAKTE_CLIENT_SECRET = 'b0FwzyKtO8QiQmgWQMTz'
@@ -209,9 +210,10 @@ class FacebookAccessTokenTest(TestCase):
 
 class TwitterAccessTokenTest(TestCase):
 
-    def assertTwitterToken(self, token, access_token):
-        self.assertGreater(len(access_token), 30)
-        self.assertEqual(len(access_token.split(token.delimeter)), 2)
+    def assertTwitterToken(self, token_class, token):
+        self.assertGreater(len(token['access_token']), 90)
+        self.assertEqual(len(token['access_token'].split(token_class.delimeter)), 2)
+        self.assertEqual(int(token['user_id']), TWITTER_USER_ID)
 
     def test_twitter_oauth_access_token(self):
         settings_temp = dict(OAUTH_TOKENS_TWITTER_USERNAME=TWITTER_USERNAME,
@@ -349,11 +351,3 @@ class OdnoklassnikiAccessTokenTest(TestCase):
             response = OdnoklassnikiAuthRequest().authorized_request(url=req.form_action_domain)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content.count(ODNOKLASSNIKI_NAME), 2)
-
-
-class OAuthAccessTokenTest(VkontakteAccessTokenTest, FacebookAccessTokenTest, TwitterAccessTokenTest, OdnoklassnikiAccessTokenTest):
-    pass
-
-
-class OAuthTokensTest(OAuthTokensModelTest, OAuthAccessTokenTest):
-    pass

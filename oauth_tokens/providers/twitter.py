@@ -45,6 +45,15 @@ class TwitterAccessToken(AccessTokenBase):
 
     delimeter = '----------'
 
+    def get(self):
+        oauth_token = super(TwitterAccessToken, self).get()
+        # {u'oauth_token_secret': u'TpAiPg7133dJKto5QK7UeIf968w1Ml26j3Yuzwp6vmkqU',
+        # u'user_id': u'2931210558',
+        # u'oauth_token': u'2931210558-1jnO1KLQV4Ru26o8Jr1nitsarSeDyKRLnEhcLvr',
+        # u'screen_name': u'travis_djangov'}
+        return {'access_token': self.delimeter.join([oauth_token.get('oauth_token'), oauth_token.get('oauth_token_secret')]),
+                'user_id': oauth_token.get('user_id')}
+
     def authorization_get_request(self):
         authorization_url = self.oauth.authorization_url(self.authorize_url)
         return self.auth_request.session.get(url=authorization_url)  # twitter don't like headers here
