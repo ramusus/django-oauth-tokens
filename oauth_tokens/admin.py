@@ -4,7 +4,7 @@ from .models import AccessToken, UserCredentials
 
 
 class AccessTokenAdmin(admin.ModelAdmin):
-    list_display = ('provider', 'access_token', 'user', 'granted_at', 'expires_at')
+    list_display = ('provider', 'access_token', 'user_credentials', 'granted_at', 'expires_at')
     list_display_links = ('access_token',)
     list_filter = ('provider',)
 
