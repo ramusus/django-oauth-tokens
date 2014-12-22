@@ -181,7 +181,7 @@ class AccessToken(models.Model):
     scope = JSONField(max_length=200, null=True, blank=True)
 
     # vk.com returns
-    user_id = models.PositiveIntegerField(null=True, blank=True)
+    user_id = models.BigIntegerField(null=True, blank=True)
 
     user_credentials = models.ForeignKey('UserCredentials', null=True, blank=True)
 
