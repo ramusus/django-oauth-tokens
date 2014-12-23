@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from bs4 import BeautifulSoup
 
-from ..base import AccessTokenBase, AuthRequestBase
+from ..base import AccessTokenBase, AuthRequestBase, log
 from ..exceptions import LoginPasswordError, AccountLocked, WrongRedirectUrl
 
 
@@ -58,12 +58,12 @@ class TwitterAccessToken(AccessTokenBase):
         authorization_url = self.oauth.authorization_url(self.authorize_url)
         return self.auth_request.session.get(url=authorization_url)  # twitter don't like headers here
 
-    def authorization_permissions_request(self, response):
-        if not "You've granted access to" in response.content:
-            raise Exception("Wrong response on authorization post request for user %s" % self.auth_request.username)
-
-        return response
-
     def process_authorization_response(self, response):
         bs = BeautifulSoup(response.content)
-        return bs.find('code').text
+        try:
+            code = int(bs.find('code').text)
+        except:
+            raise Exception("Wrong response on authorization post request for user %s" % self.auth_request.username)
+
+        log.debug('Got twitter verifier: %s for user %s' % (code, self.oauth_request.username))
+        return str(code)

@@ -8,6 +8,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import models, transaction
 from django.utils import timezone
 from django.utils.importlib import import_module
+from requests_oauthlib.oauth1_session import TokenRequestDenied
 from taggit.managers import TaggableManager
 
 from .exceptions import AccountLocked, LoginPasswordError
@@ -143,7 +144,7 @@ class AccessTokenManager(models.Manager):
 
             try:
                 token = self.get_token_of_class(token_class, user).get()
-            except (AccountLocked, LoginPasswordError), e:
+            except (TokenRequestDenied, AccountLocked, LoginPasswordError), e:
                 log.error(u"Error '%s' while getting new token for provider %s and user %s" % (e, provider, user))
                 user.inactivate(e)
                 continue
