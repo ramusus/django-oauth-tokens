@@ -1,45 +1,87 @@
 # -*- coding: utf-8 -*-
-from django.db import models, transaction
-from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
-from django.utils.importlib import import_module
-from tyoi.oauth2 import AccessTokenResponseError
-from taggit.managers import TaggableManager
 from datetime import datetime
 import logging
+
+from annoying.fields import JSONField
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+from django.db import models, transaction
+from django.utils import timezone
+from django.utils.importlib import import_module
+from taggit.managers import TaggableManager
+
+from .exceptions import AccountLocked, LoginPasswordError
 
 log = logging.getLogger('oauth_tokens')
 
 HISTORY = getattr(settings, 'OAUTH_TOKENS_HISTORY', False)
-PROVIDERS = getattr(settings, 'OAUTH_TOKENS_PROVIDERS', {
-    'vkontakte': 'oauth_tokens.providers.vkontakte.VkontakteAccessToken',
-    'facebook': 'oauth_tokens.providers.facebook.FacebookAccessToken',
-    'odnoklassniki': 'oauth_tokens.providers.odnoklassniki.OdnoklassnikiAccessToken',
-})
-PROVIDER_CHOICES = [((provider, provider.title())) for provider in PROVIDERS.keys()]
+PROVIDERS = [
+    'vkontakte',
+    'facebook',
+    'twitter',
+    'odnoklassniki',
+]
+PROVIDER_CHOICES = [((provider, provider.title())) for provider in PROVIDERS]
+ACCESS_TOKENS_CLASSES = getattr(settings, 'OAUTH_TOKENS_CLASSES',
+                                dict([(p, 'oauth_tokens.providers.%s.%sAccessToken' % (p, p.title()))
+                                      for p in PROVIDERS])
+                                )
+
 
 class AccessTokenGettingError(Exception):
     pass
 
+
 class AccessTokenRefreshingError(Exception):
     pass
 
+
 class AccessTokenManager(models.Manager):
+
     '''
     Defautl manager for AccessToken for retrieving token
     '''
+
     def filter(self, *args, **kwargs):
         '''
         Optional filter by user's `tag`
         '''
         tag = kwargs.pop('tag', None)
         if tag:
-            kwargs['user__in'] = UserCredentials.objects.filter(tags__name__in=[tag]).values_list('pk', flat=True)
+            kwargs['user_credentials__in'] = UserCredentials.objects.filter(
+                tags__name__in=[tag]).values_list('pk', flat=True)
 
         return super(AccessTokenManager, self).filter(*args, **kwargs)
 
     def filter_active_tokens_of_provider(self, provider, *args, **kwargs):
-        return self.filter(provider=provider, expires__gt=datetime.now(), *args, **kwargs).order_by('?')
+        return self.filter(provider=provider, expires_at__gt=timezone.now(), *args, **kwargs).order_by('?')
+
+    def get_token(self, provider, tag=None):
+        '''
+        Returns access token instance. If tag argument provided or
+        settings OAUTH_TOKENS_%s_USERNAME is not defined look up for credentials in DB
+        '''
+        token_class = self.get_token_class(provider)
+
+        if tag is None and getattr(settings, 'OAUTH_TOKENS_%s_USERNAME' % provider.upper(), None):
+            user = None
+        else:
+            qs_users = UserCredentials.objects.filter(provider=provider)
+            if tag:
+                qs_users = qs_users.filter(tags__name__in=[tag])
+
+            try:
+                user = qs_users[0]
+            except IndexError:
+                raise Exception("User with tag %s for provider %s does not exist" % (tag, provider))
+
+        return self.get_token_of_class(token_class, user)
+
+    def get_token_of_class(self, token_class, user=None):
+        if user:
+            return token_class(username=user.username, password=user.password, additional=user.additional)
+        else:
+            return token_class()
 
     def get_token_class(self, provider):
 
@@ -47,12 +89,13 @@ class AccessTokenManager(models.Manager):
             raise ValueError("Provider `%s` not in available providers list" % provider)
 
         try:
-            path = PROVIDERS[provider].split('.')
+            path = ACCESS_TOKENS_CLASSES[provider].split('.')
             module = '.'.join(path[:-1])
             class_name = path[-1]
             token_class = getattr(import_module(module), path[-1])
         except ImportError:
-            raise ImproperlyConfigured("Impossible to find access token class with path %s" % PROVIDERS[provider])
+            raise ImproperlyConfigured("Impossible to find access token class with path %s" %
+                                       ACCESS_TOKENS_CLASSES[provider])
 
         return token_class
 
@@ -68,14 +111,11 @@ class AccessTokenManager(models.Manager):
             token_class = self.get_token_class(provider)
 
             try:
-                new_token = token_class().refresh(token.refresh_token, scope=token.scope)
-            except AccessTokenResponseError:
+                new_token = token_class().refresh(token)
+            except:
                 return self.fetch(provider)
 
-            access_token = self.model(provider=provider, user=token.user)
-            access_token.__dict__.update(new_token.__dict__)
-            access_token.refresh_token = token.refresh_token
-            access_token.save()
+            access_token = self.model.objects.create(provider=provider, user_credentials=user, **token)
             access_tokens += [access_token]
 
         if len(access_tokens) == 0:
@@ -89,8 +129,6 @@ class AccessTokenManager(models.Manager):
         Get new token and save it to database for all users in UserCredentials table.
         Сlean database before if OAUTH_TOKENS_HISTORY disabled
         '''
-        from base import OAuthError, UserAccessError, AccountLocked, LoginPasswordError
-
         token_class = self.get_token_class(provider)
 
         # walk through all users of current provider in UserCredentials table
@@ -104,22 +142,16 @@ class AccessTokenManager(models.Manager):
         for user in users:
 
             try:
-                token = token_class(user=user).get()
-            except (OAuthError, AccountLocked, UserAccessError), e:
+                token = self.get_token_of_class(token_class, user).get()
+            except (AccountLocked, LoginPasswordError), e:
                 log.error(u"Error '%s' while getting new token for provider %s and user %s" % (e, provider, user))
-                continue
-            except LoginPasswordError, e:
-                log.error(u"Error '%s' while getting new token for provider %s and user %s" % (e, provider, user))
-                user.active = False
-                user.save()
+                user.inactivate(e)
                 continue
 
             if not HISTORY:
-                self.filter(provider=provider, user=user).delete()
+                self.filter(provider=provider, user_credentials=user).delete()
 
-            access_token = self.model(provider=provider, user=user)
-            access_token.__dict__.update(token.__dict__)
-            access_token.save()
+            access_token = self.model.objects.create(provider=provider, user_credentials=user, **token)
             access_tokens += [access_token]
 
         if len(access_tokens) == 0:
@@ -127,34 +159,49 @@ class AccessTokenManager(models.Manager):
 
         return access_tokens
 
+
 class AccessToken(models.Model):
+
     class Meta:
         verbose_name = 'Oauth access token'
         verbose_name_plural = 'Oauth access tokens'
-        ordering = ('-granted',)
-        get_latest_by = 'granted'
+        ordering = ('-granted_at',)
+        get_latest_by = 'granted_at'
 
     provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, db_index=True)
-    granted = models.DateTimeField(auto_now=True)
+    granted_at = models.DateTimeField(auto_now=True)
 
     access_token = models.CharField(max_length=500)
-    expires = models.DateTimeField(null=True, blank=True, db_index=True)
-    token_type = models.CharField(max_length=200, null=True, blank=True)
     refresh_token = models.CharField(max_length=200, null=True, blank=True)
-    scope = models.CharField(max_length=200, null=True, blank=True)
 
-    user = models.ForeignKey('UserCredentials', null=True, blank=True)
+    expires_in = models.PositiveIntegerField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    token_type = models.CharField(max_length=200, null=True, blank=True)
+    scope = JSONField(max_length=200, null=True, blank=True)
+
+    # vk.com returns
+    user_id = models.BigIntegerField(null=True, blank=True)
+
+    user_credentials = models.ForeignKey('UserCredentials', null=True, blank=True)
 
     objects = AccessTokenManager()
 
+    def __init__(self, *args, **kwargs):
+        if 'expires_at' in kwargs and isinstance(kwargs['expires_at'], (float, int)):
+            kwargs['expires_at'] = datetime.fromtimestamp(kwargs['expires_at'])
+        super(AccessToken, self).__init__(*args, **kwargs)
+
     def __str__(self):
         return '#%s' % self.access_token
+
 
 class UserCredentials(models.Model):
 
     name = models.CharField(max_length=100)
     provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
-    active = models.BooleanField()
+    active = models.BooleanField(default=True)
+    exception = models.TextField()
 
     username = models.CharField(max_length=100)
     password = models.CharField(max_length=100)
@@ -164,3 +211,13 @@ class UserCredentials(models.Model):
 
     def __unicode__(self):
         return self.name
+
+    def inactivate(self, error):
+        self.exception = unicode(error)
+        self.active = False
+        self.save()
+
+    def save(self, *args, **kwargs):
+        if self.active:
+            self.exception = ''
+        super(UserCredentials, self).save(*args, **kwargs)
