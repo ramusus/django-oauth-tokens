@@ -31,6 +31,7 @@ class FacebookAuthRequest(AuthRequestBase):
 
     account_locked_phrases = [
         'Ваш аккаунт временно заблокирован',
+        'Мы заблокировали ваш аккаунт в связи с попыткой входа из незнакомого места. Пожалуйста, помогите нам подтвердить, что попытка входа была произведена вами.',
         'Your account is temporarily locked.',
     ]
 

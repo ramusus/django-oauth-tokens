@@ -201,7 +201,7 @@ class UserCredentials(models.Model):
     name = models.CharField(max_length=100)
     provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
     active = models.BooleanField(default=True)
-    exception = models.TextField()
+    exception = models.TextField(blank=True)
 
     username = models.CharField(max_length=100)
     password = models.CharField(max_length=100)
