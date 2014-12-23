@@ -60,7 +60,7 @@ class TwitterAccessToken(AccessTokenBase):
 
     def authorization_permissions_request(self, response):
         if not "You've granted access to" in response.content:
-            raise Exception("Wrong response on authorization post request")
+            raise Exception("Wrong response on authorization post request for user %s" % self.auth_request.username)
 
         return response
 

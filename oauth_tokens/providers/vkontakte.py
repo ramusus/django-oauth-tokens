@@ -43,7 +43,7 @@ class VkontakteAuthRequest(AuthRequestBase):
                 r"var params = {act: 'security_check', code: ge\('code'\).value, to: '([^']+)', al_page: '4', hash: '([^']+)'};", response.content)
 
             if len(m) == 0:
-                raise Exception("Impossible to find security check parameters")
+                raise Exception("Impossible to find security check parameters for user %s" % self.username)
 
             additional = self.get_setting('additional')
             response = requests.post(self.login_url,
@@ -67,7 +67,7 @@ class VkontakteAuthRequest(AuthRequestBase):
             content = BeautifulSoup(response.content)
             reason = content.find('div', **{'class': re.compile('login_blocked_panel$')}).text
             raise AccountLocked(u"User %s for provider %s is blocked for reason: %s" %
-                                (self.user.name, self.provider, reason))
+                                (self.username, self.provider, reason))
 
         return response
 
