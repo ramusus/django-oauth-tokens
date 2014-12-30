@@ -2,6 +2,7 @@
 from abc import abstractmethod, abstractproperty, ABCMeta
 import logging
 from ssl import SSLError
+import socket
 import time
 
 from requests.exceptions import ConnectionError
@@ -21,7 +22,7 @@ class ApiAbstractBase(object):
 
     consistent_token = None
     error_class = Exception
-    error_class_repeat = (SSLError, ConnectionError)
+    error_class_repeat = (SSLError, ConnectionError, socket.error)
 
     recursion_count = 0
 
@@ -49,9 +50,8 @@ class ApiAbstractBase(object):
                 # wait 1 sec and repeat with empty attribute used_access_tokens
                 self.logger.warning("Waiting 1 sec, because all active tokens are used, method: %s, recursion count: %d" %
                                     (self.method, self.recursion_count))
-                time.sleep(1)
                 self.used_access_tokens = []
-                return self.repeat_call(*args, **kwargs)
+                return self.sleep_repeat_call(*args, **kwargs)
             else:
                 self.logger.warning("Suddenly updating tokens, because no active access tokens and used_access_tokens empty, \
                     method: %s, recursion count: %d" % (self.method, self.recursion_count))
@@ -84,6 +84,9 @@ class ApiAbstractBase(object):
     def handle_error_repeat(self, e, *args, **kwargs):
         self.logger.error("Exception: '%s' registered while executing method %s with params %s, recursion count: %d" %
                           (e, self.method, kwargs, self.recursion_count))
+        return self.sleep_repeat_call(*args, **kwargs)
+
+    def sleep_repeat_call(self):
         time.sleep(1)
         return self.repeat_call(*args, **kwargs)
 
