@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from abc import abstractmethod, abstractproperty, ABCMeta
 import logging
-from ssl import SSLError
 import socket
+from ssl import SSLError
 import time
 
 from requests.exceptions import ConnectionError
@@ -86,7 +86,7 @@ class ApiAbstractBase(object):
                           (e, self.method, kwargs, self.recursion_count))
         return self.sleep_repeat_call(*args, **kwargs)
 
-    def sleep_repeat_call(self):
+    def sleep_repeat_call(self, *args, **kwargs):
         time.sleep(1)
         return self.repeat_call(*args, **kwargs)
 
