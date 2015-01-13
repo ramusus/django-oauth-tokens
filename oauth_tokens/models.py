@@ -62,8 +62,6 @@ class AccessTokenManager(models.Manager):
         Returns access token instance. If tag argument provided or
         settings OAUTH_TOKENS_%s_USERNAME is not defined look up for credentials in DB
         '''
-        token_class = self.get_token_class(provider)
-
         if tag is None and getattr(settings, 'OAUTH_TOKENS_%s_USERNAME' % provider.upper(), None):
             user = None
         else:
@@ -76,6 +74,10 @@ class AccessTokenManager(models.Manager):
             except IndexError:
                 raise Exception("User with tag %s for provider %s does not exist" % (tag, provider))
 
+        return self.get_token_for_user(provider, user)
+
+    def get_token_for_user(self, provider, user):
+        token_class = self.get_token_class(provider)
         return self.get_token_of_class(token_class, user)
 
     def get_token_of_class(self, token_class, user=None):
