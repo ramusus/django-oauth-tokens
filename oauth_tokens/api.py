@@ -46,17 +46,7 @@ class ApiAbstractBase(object):
         try:
             self.api = self.get_api(tag=self.token_tag)
         except NoActiveTokens, e:
-            if self.used_access_tokens:
-                # wait 1 sec and repeat with empty attribute used_access_tokens
-                self.logger.warning("Waiting 1 sec, because all active tokens are used, method: %s, recursion count: %d" %
-                                    (self.method, self.recursion_count))
-                self.used_access_tokens = []
-                return self.sleep_repeat_call(*args, **kwargs)
-            else:
-                self.logger.warning("Suddenly updating tokens, because no active access tokens and used_access_tokens empty, \
-                    method: %s, recursion count: %d" % (self.method, self.recursion_count))
-                self.update_tokens()
-                return self.repeat_call(*args, **kwargs)
+            return self.handle_error_no_active_tokens(e, *args, **kwargs)
 
         try:
             response = self.get_api_response(*args, **kwargs)
@@ -70,6 +60,19 @@ class ApiAbstractBase(object):
             raise
 
         return response
+
+    def handle_error_no_active_tokens(self, e, *args, **kwargs):
+        if self.used_access_tokens:
+            # wait 1 sec and repeat with empty used_access_tokens
+            self.logger.warning("Waiting 1 sec, because all active tokens are used, method: %s, recursion count: %d" %
+                                (self.method, self.recursion_count))
+            self.used_access_tokens = []
+            return self.sleep_repeat_call(*args, **kwargs)
+        else:
+            self.logger.warning("Suddenly updating tokens, because no active access tokens and used_access_tokens empty, \
+                method: %s, recursion count: %d" % (self.method, self.recursion_count))
+            self.update_tokens()
+            return self.repeat_call(*args, **kwargs)
 
     def handle_error_code(self, e, *args, **kwargs):
         try:
@@ -86,8 +89,8 @@ class ApiAbstractBase(object):
                           (e, self.method, kwargs, self.recursion_count))
         return self.sleep_repeat_call(*args, **kwargs)
 
-    def sleep_repeat_call(self, *args, **kwargs):
-        time.sleep(1)
+    def sleep_repeat_call(self, seconds=1, *args, **kwargs):
+        time.sleep(seconds)
         return self.repeat_call(*args, **kwargs)
 
     def repeat_call(self, *args, **kwargs):
@@ -126,7 +129,10 @@ class ApiAbstractBase(object):
         return AccessToken.objects.filter(provider=self.provider).order_by('-granted_at')
 
     def get_token(self, **kwargs):
-        token = self.consistent_token
+        token = None
+
+        if self.consistent_token not in self.used_access_tokens:
+            token = self.consistent_token
 
         if not token:
             tokens = self.get_tokens(**kwargs)
