@@ -33,3 +33,9 @@ Applications also can imitate authorized requests on behalf of user
 * requests_oauthlib
 * django-taggit
 * beautifulsoup4
+
+In order to test with quicktest.py, you also need:
+
+* mock
+* factory_boy
+
