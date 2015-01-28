@@ -309,7 +309,7 @@ class VkontakteAccessTokenTest(TestCase):
 
             response = req.authorized_request(url=req.form_action_domain)
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.content.decode('windows-1251').encode('utf-8').count(VKONTAKTE_NAME), 5)
+            self.assertGreaterEqual(response.content.decode('windows-1251').encode('utf-8').count(VKONTAKTE_NAME), 5)
 
 
 class OdnoklassnikiAccessTokenTest(TestCase):

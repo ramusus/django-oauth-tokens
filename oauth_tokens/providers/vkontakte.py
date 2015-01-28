@@ -2,7 +2,6 @@
 import re
 
 from bs4 import BeautifulSoup
-import requests
 
 from ..base import AccessTokenBase, AuthRequestBase, log
 from ..exceptions import LoginPasswordError, AccountLocked, WrongRedirectUrl
@@ -40,16 +39,17 @@ class VkontakteAuthRequest(AuthRequestBase):
         # TODO: test it and may be move to authorize() method
         if '<input name="code" id="code" type="text" class="text"' in response.content:
             m = re.findall(
-                r"var params = {act: 'security_check', code: ge\('code'\).value, to: '([^']+)', al_page: '4', hash: '([^']+)'};", response.content)
+                r"var params = {code: ge\('code'\).value, to: '([^']*)', al_page: '([^']+)', hash: '([^']+)'};", response.content)
 
             if len(m) == 0:
                 raise Exception("Impossible to find security check parameters for user %s" % self.username)
 
-            additional = self.get_setting('additional')
-            response = requests.post(self.login_url,
-                                     headers={'X-Requested-With': 'XMLHttpRequest'},
-                                     cookies=response.cookies,
-                                     data={'act': 'security_check', 'code': additional, 'to': m[0][0], 'al_page': '4', 'hash': m[0][1]})
+            response = self.session.post(self.login_url, headers={'X-Requested-With': 'XMLHttpRequest'},
+                                         data={'act': 'security_check',
+                                               'code': self.get_setting('additional'),
+                                               'to': m[0][0],
+                                               'al_page': m[0][1],
+                                               'hash': m[0][2]})
 
         return response
 
@@ -70,6 +70,11 @@ class VkontakteAuthRequest(AuthRequestBase):
                                 (self.username, self.provider, reason))
 
         return response
+
+    def get_form_data_from_content(self, content, **kwargs):
+        if content.count('</html>'):
+            content = re.sub(r'</html>', '', content, 1)
+        return super(VkontakteAuthRequest, self).get_form_data_from_content(content)
 
 
 class VkontakteAccessToken(AccessTokenBase):
