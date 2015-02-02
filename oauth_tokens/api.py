@@ -126,7 +126,7 @@ class ApiAbstractBase(object):
                     raise
 
     def get_tokens(self, **kwargs):
-        return AccessToken.objects.filter(provider=self.provider).order_by('-granted_at')
+        return AccessToken.objects.filter(provider=self.provider, **kwargs).order_by('-granted_at')
 
     def get_token(self, **kwargs):
         token = None
