@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 from annoying.fields import JSONField
@@ -40,7 +40,7 @@ class AccessTokenRefreshingError(Exception):
 class AccessTokenManager(models.Manager):
 
     '''
-    Defautl manager for AccessToken for retrieving token
+    Default manager for AccessToken for retrieving token
     '''
 
     def filter(self, *args, **kwargs):
@@ -55,7 +55,12 @@ class AccessTokenManager(models.Manager):
         return super(AccessTokenManager, self).filter(*args, **kwargs)
 
     def filter_active_tokens_of_provider(self, provider, *args, **kwargs):
-        return self.filter(provider=provider, expires_at__gt=timezone.now(), *args, **kwargs).order_by('?')
+        # don't use timezone.now() for ability to cache querysets
+        next_hour = datetime(datetime.now().year,
+                             datetime.now().month,
+                             datetime.now().day,
+                             datetime.now().hour) + timedelta(hours=1)
+        return self.filter(provider=provider, expires_at__gt=next_hour, *args, **kwargs).order_by('?')
 
     def get_token(self, provider, tag=None):
         '''

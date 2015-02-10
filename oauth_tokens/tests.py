@@ -277,7 +277,7 @@ class VkontakteAccessTokenTest(TestCase):
     def test_vkontakte_oauth_access_token_user_in_db(self):
         settings_temp = dict(OAUTH_TOKENS_VKONTAKTE_USERNAME=None,
                              OAUTH_TOKENS_VKONTAKTE_PASSWORD=None,
-                             OAUTH_TOKENS_VKONTAKTE_ADDITIONAL=VKONTAKTE_ADDITIONAL,
+                             OAUTH_TOKENS_VKONTAKTE_ADDITIONAL=None,
                              OAUTH_TOKENS_VKONTAKTE_SCOPE=VKONTAKTE_SCOPE,
                              OAUTH_TOKENS_VKONTAKTE_CLIENT_ID=VKONTAKTE_CLIENT_ID,
                              OAUTH_TOKENS_VKONTAKTE_CLIENT_SECRET=VKONTAKTE_CLIENT_SECRET)
