@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-from abc import abstractmethod, abstractproperty, ABCMeta
 import logging
 import socket
 from ssl import SSLError
 import time
 
+from abc import abstractmethod, abstractproperty, ABCMeta
 from requests.exceptions import ConnectionError
-
 from .models import AccessToken, AccessTokenGettingError, AccessTokenRefreshingError
 
 __all__ = ['NoActiveTokens', 'ApiAbstractBase', 'Singleton']
@@ -17,7 +16,6 @@ class NoActiveTokens(Exception):
 
 
 class ApiAbstractBase(object):
-
     __metaclass__ = ABCMeta
 
     consistent_token = None
@@ -38,6 +36,7 @@ class ApiAbstractBase(object):
         self.used_access_tokens = []
         self.consistent_token = self.get_consistent_token()
         self.logger = self.get_logger()
+        self.api = None
 
     def call(self, method, *args, **kwargs):
         self.method = method
@@ -69,8 +68,8 @@ class ApiAbstractBase(object):
             self.used_access_tokens = []
             return self.sleep_repeat_call(*args, **kwargs)
         else:
-            self.logger.warning("Suddenly updating tokens, because no active access tokens and used_access_tokens empty, \
-                method: %s, recursion count: %d" % (self.method, self.recursion_count))
+            self.logger.warning("Suddenly updating tokens, because no active access tokens and used_access_tokens "
+                                "empty, method: %s, recursion count: %d" % (self.method, self.recursion_count))
             self.update_tokens()
             return self.repeat_call(*args, **kwargs)
 
@@ -78,15 +77,15 @@ class ApiAbstractBase(object):
         try:
             response = getattr(self, 'handle_error_code_%d' % e.code)(e, *args, **kwargs)
         except AttributeError:
-            self.logger.error(
-                "Recognized unhandled error: %s registered while executing method %s with params %s" % (e, self.method, kwargs))
+            self.logger.error("Recognized unhandled error: %s registered while executing method %s with params %s"
+                              % (e, self.method, kwargs))
             raise e
 
         return response
 
     def handle_error_repeat(self, e, *args, **kwargs):
-        self.logger.error("Exception: '%s' registered while executing method %s with params %s, recursion count: %d" %
-                          (e, self.method, kwargs, self.recursion_count))
+        self.logger.error("Exception: '%s' registered while executing method %s with params %s, recursion count: %d"
+                          % (e, self.method, kwargs, self.recursion_count))
         return self.sleep_repeat_call(*args, **kwargs)
 
     def sleep_repeat_call(self, seconds=1, *args, **kwargs):
@@ -147,8 +146,8 @@ class ApiAbstractBase(object):
             try:
                 token = tokens[0].access_token
             except IndexError:
-                raise NoActiveTokens(
-                    "There is no active AccessTokens for provider %s with kwargs %s" % (self.provider, kwargs))
+                raise NoActiveTokens("There is no active AccessTokens for provider %s with kwargs: %s, used_tokens: %s"
+                                     % (self.provider, kwargs, self.used_access_tokens))
 
         return token
 
@@ -172,11 +171,10 @@ class ApiAbstractBase(object):
 
 
 class Singleton(ABCMeta):
-
-    '''
+    """
     Singleton metaclass for API classes
     from here http://stackoverflow.com/a/33201/87535
-    '''
+    """
 
     def __init__(cls, name, bases, dict):
         super(Singleton, cls).__init__(name, bases, dict)
