@@ -43,9 +43,11 @@ class ApiAbstractBase(object):
         self.token_tag = kwargs.pop(self.token_tag_arg_name, None)
 
         try:
-            self.api = self.get_api(tag=self.token_tag)
+            token = self.get_token(tag=self.token_tag)
         except NoActiveTokens, e:
             return self.handle_error_no_active_tokens(e, *args, **kwargs)
+
+        self.api = self.get_api(token)
 
         try:
             response = self.get_api_response(*args, **kwargs)
@@ -162,7 +164,7 @@ class ApiAbstractBase(object):
         pass
 
     @abstractmethod
-    def get_api(self):
+    def get_api(self, token):
         pass
 
     @abstractmethod
