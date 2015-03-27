@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from httplib import BadStatusLine
 import logging
 import socket
 from ssl import SSLError
@@ -20,7 +21,7 @@ class ApiAbstractBase(object):
 
     consistent_token = None
     error_class = Exception
-    error_class_repeat = (SSLError, ConnectionError, socket.error)
+    error_class_repeat = (SSLError, ConnectionError, socket.error, BadStatusLine)
 
     recursion_count = 0
 
