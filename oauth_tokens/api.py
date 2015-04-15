@@ -90,7 +90,7 @@ class ApiAbstractBase(object):
     def handle_error_code(self, e, *args, **kwargs):
         # try to find method for handling exception by it's code
         try:
-            return getattr(self, 'handle_error_code_%d' % self.get_error_code(e))(e, *args, **kwargs)
+            return getattr(self, 'handle_error_code_%s' % self.get_error_code(e))(e, *args, **kwargs)
         except AttributeError:
             self.logger.error("Recognized unhandled error: %s registered while executing method %s with params %s"
                               % (e, self.method, kwargs))
