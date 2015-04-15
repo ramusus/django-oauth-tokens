@@ -22,6 +22,7 @@ class ApiAbstractBase(object):
     consistent_token = None
     error_class = Exception
     error_class_repeat = (SSLError, ConnectionError, socket.error, BadStatusLine)
+    sleep_repeat_error_messages = []
 
     recursion_count = 0
 
@@ -53,6 +54,9 @@ class ApiAbstractBase(object):
         try:
             response = self.get_api_response(*args, **kwargs)
         except self.error_class, e:
+            response = self.handle_error_message(e, *args, **kwargs)
+            if response is not None:
+                return response
             response = self.handle_error_code(e, *args, **kwargs)
         except self.error_class_repeat, e:
             response = self.handle_error_repeat(e, *args, **kwargs)
@@ -76,15 +80,24 @@ class ApiAbstractBase(object):
             self.update_tokens()
             return self.repeat_call(*args, **kwargs)
 
+    def handle_error_message(self, e, *args, **kwargs):
+        # check if error message contains any of defined messages
+        for message in self.sleep_repeat_error_messages:
+            if message in str(e):
+                return self.sleep_repeat_call(*args, **kwargs)
+        return
+
     def handle_error_code(self, e, *args, **kwargs):
+        # try to find method for handling exception by it's code
         try:
-            response = getattr(self, 'handle_error_code_%d' % e.code)(e, *args, **kwargs)
+            return getattr(self, 'handle_error_code_%d' % self.get_error_code(e))(e, *args, **kwargs)
         except AttributeError:
             self.logger.error("Recognized unhandled error: %s registered while executing method %s with params %s"
                               % (e, self.method, kwargs))
             raise e
 
-        return response
+    def get_error_code(self, e):
+        return e.code
 
     def handle_error_repeat(self, e, *args, **kwargs):
         self.logger.error("Exception: '%s' registered while executing method %s with params %s, recursion count: %d"
