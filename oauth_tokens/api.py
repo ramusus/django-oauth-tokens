@@ -96,8 +96,8 @@ class ApiAbstractBase(object):
         except AttributeError:
             self.logger.error("Recognized unhandled error: %s registered while executing method %s with params %s"
                               % (e, self.method, kwargs))
-            raise type(e), type(e)(e.message + ' while executing method %s with args %s, kwargs %s' % (
-                self.method, args, kwargs)), sys.exc_info()[2]
+            raise type(e), type(e)('%s while executing method %s with args %s, kwargs %s' % (
+                e.message, self.method, args, kwargs)), sys.exc_info()[2]
 
     def get_error_code(self, e):
         return e.code
