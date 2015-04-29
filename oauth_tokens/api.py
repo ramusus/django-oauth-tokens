@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
-from httplib import BadStatusLine
 import logging
 import socket
-from ssl import SSLError
+import sys
 import time
+from abc import ABCMeta, abstractmethod, abstractproperty
+from httplib import BadStatusLine
+from ssl import SSLError
 
-from abc import abstractmethod, abstractproperty, ABCMeta
 from requests.exceptions import ConnectionError
+
 from .models import AccessToken, AccessTokenGettingError, AccessTokenRefreshingError
 
 __all__ = ['NoActiveTokens', 'ApiAbstractBase', 'Singleton']
@@ -94,7 +96,8 @@ class ApiAbstractBase(object):
         except AttributeError:
             self.logger.error("Recognized unhandled error: %s registered while executing method %s with params %s"
                               % (e, self.method, kwargs))
-            raise e
+            raise type(e), type(e)(e.message + ' while executing method %s with args %s, kwargs %s' % (
+                self.method, args, kwargs)), sys.exc_info()[2]
 
     def get_error_code(self, e):
         return e.code
