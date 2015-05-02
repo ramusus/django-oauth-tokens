@@ -63,9 +63,7 @@ class ApiAbstractBase(object):
         except self.error_class_repeat, e:
             response = self.handle_error_repeat(e, *args, **kwargs)
         except Exception, e:
-            self.logger.error(
-                "Unhandled error: %s registered while executing method %s with params %s" % (e, self.method, kwargs))
-            raise
+            return self.log_and_raise(e, *args, **kwargs)
 
         return response
 
@@ -94,10 +92,13 @@ class ApiAbstractBase(object):
         try:
             return getattr(self, 'handle_error_code_%s' % self.get_error_code(e))(e, *args, **kwargs)
         except AttributeError:
-            self.logger.error("Recognized unhandled error: %s registered while executing method %s with params %s"
-                              % (e, self.method, kwargs))
-            raise type(e), type(e)('%s while executing method %s with args %s, kwargs %s' % (
-                e.message, self.method, args, kwargs)), sys.exc_info()[2]
+            return self.log_and_raise(e, *args, **kwargs)
+
+    def log_and_raise(self, e, *args, **kwargs):
+        self.logger.error("Error '%s'. Method %s, args: %s, kwargs: %s, recursion count: %d" % (
+            e, self.method, args, kwargs, self.recursion_count))
+        raise type(e), type(e)('%s while executing method %s with args %s, kwargs %s' % (
+            e.message, self.method, args, kwargs)), sys.exc_info()[2]
 
     def get_error_code(self, e):
         return e.code
