@@ -97,8 +97,11 @@ class ApiAbstractBase(object):
     def log_and_raise(self, e, *args, **kwargs):
         self.logger.error("Error '%s'. Method %s, args: %s, kwargs: %s, recursion count: %d" % (
             e, self.method, args, kwargs, self.recursion_count))
-        raise type(e), type(e)('%s while executing method %s with args %s, kwargs %s' % (
-            e.message, self.method, args, kwargs)), sys.exc_info()[2]
+        error_class = type(e)
+        error = error_class('%s while executing method %s with args %s, kwargs %s' % (
+            e.message, self.method, args, kwargs))
+        error.__dict__.update(e.__dict__)
+        raise error_class, error, sys.exc_info()[2]
 
     def get_error_code(self, e):
         return e.code
