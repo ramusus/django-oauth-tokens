@@ -4,7 +4,7 @@ import socket
 import sys
 import time
 from abc import ABCMeta, abstractmethod, abstractproperty
-from httplib import BadStatusLine
+from httplib import BadStatusLine, ResponseNotReady
 from ssl import SSLError
 
 from requests.exceptions import ConnectionError
@@ -23,7 +23,7 @@ class ApiAbstractBase(object):
 
     consistent_token = None
     error_class = Exception
-    error_class_repeat = (SSLError, ConnectionError, socket.error, BadStatusLine)
+    error_class_repeat = (SSLError, ConnectionError, socket.error, BadStatusLine, ResponseNotReady)
     sleep_repeat_error_messages = []
 
     recursion_count = 0
