@@ -5,13 +5,18 @@ import logging
 from annoying.fields import JSONField
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.db import models, transaction
-from django.utils import timezone
+from django.db import models
 from django.utils.importlib import import_module
 from requests_oauthlib.oauth1_session import TokenRequestDenied
 from taggit.managers import TaggableManager
 
 from .exceptions import AccountLocked, LoginPasswordError, WrongAuthorizationResponseUrl
+
+try:
+    from django.db.transaction import atomic
+except ImportError:
+    from django.db.transaction import commit_on_success as atomic
+
 
 log = logging.getLogger('oauth_tokens')
 
@@ -131,7 +136,7 @@ class AccessTokenManager(models.Manager):
 
         return access_tokens
 
-    @transaction.commit_on_success
+    @atomic
     def fetch(self, provider):
         '''
         Get new token and save it to database for all users in UserCredentials table.
