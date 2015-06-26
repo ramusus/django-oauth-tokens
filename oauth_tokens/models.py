@@ -55,7 +55,7 @@ class AccessTokenManager(models.Manager):
         tag = kwargs.pop('tag', None)
         if tag:
             kwargs['user_credentials__in'] = UserCredentials.objects.filter(
-                tags__name__in=[tag]).values_list('pk', flat=True)
+                tags__name__in=[tag]).values_list('pk')
 
         return super(AccessTokenManager, self).filter(*args, **kwargs)
 

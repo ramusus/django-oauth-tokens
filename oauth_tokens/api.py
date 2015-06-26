@@ -111,8 +111,8 @@ class ApiAbstractBase(object):
                           % (e, self.method, kwargs, self.recursion_count))
         return self.sleep_repeat_call(*args, **kwargs)
 
-    def sleep_repeat_call(self, seconds=1, *args, **kwargs):
-        time.sleep(seconds)
+    def sleep_repeat_call(self, *args, **kwargs):
+        time.sleep(kwargs.pop('seconds', 1))
         return self.repeat_call(*args, **kwargs)
 
     def repeat_call(self, *args, **kwargs):
