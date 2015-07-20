@@ -157,6 +157,12 @@ class ApiAbstractBase(object):
             token = self.consistent_token
 
         if not token:
+
+            user = kwargs.pop('user', None)
+            if user:
+                # python social auth hook
+                return self.get_token_for_user(user)
+
             tokens = self.get_tokens(**kwargs)
 
             if not tokens:
@@ -173,6 +179,15 @@ class ApiAbstractBase(object):
                                      % (self.provider, kwargs, self.used_access_tokens))
 
         return token
+
+    @property
+    def social_auth_provider(self):
+        return NotImplementedError()
+
+    def get_token_for_user(self, user):
+        from social.apps.django_app.default.models import UserSocialAuth
+        social_auth = UserSocialAuth.objects.get(user=user, provider=self.provider_social_auth)
+        return social_auth.extra_data['access_token']
 
     def get_consistent_token(self):
         pass
