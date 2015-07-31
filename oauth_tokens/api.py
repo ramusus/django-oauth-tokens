@@ -31,6 +31,8 @@ class ApiAbstractBase(object):
     method = None
     token_tag = None
     token_tag_arg_name = 'methods_access_tag'
+    user = None
+    user_arg_name = 'user'
     used_access_tokens = None
 
     update_tokens_max_count = 5
@@ -45,6 +47,7 @@ class ApiAbstractBase(object):
     def call(self, method, *args, **kwargs):
         self.method = method
         self.token_tag = kwargs.pop(self.token_tag_arg_name, None)
+        self.user= kwargs.pop(self.user_arg_name, None)
 
         try:
             token = self.get_token(tag=self.token_tag)
@@ -119,6 +122,8 @@ class ApiAbstractBase(object):
         self.recursion_count += 1
         if self.token_tag:
             kwargs[self.token_tag_arg_name] = self.token_tag
+        if self.user:
+            kwargs[self.user_arg_name] = self.user
         return self.call(self.method, *args, **kwargs)
 
     def update_tokens(self):
@@ -158,10 +163,9 @@ class ApiAbstractBase(object):
 
         if not token:
 
-            user = kwargs.pop('user', None)
-            if user:
+            if self.user:
                 # python social auth hook
-                return self.get_token_for_user(user)
+                return self.get_token_for_user()
 
             tokens = self.get_tokens(**kwargs)
 
@@ -184,9 +188,9 @@ class ApiAbstractBase(object):
     def social_auth_provider(self):
         return NotImplementedError()
 
-    def get_token_for_user(self, user):
+    def get_token_for_user(self):
         from social.apps.django_app.default.models import UserSocialAuth
-        social_auth = UserSocialAuth.objects.get(user=user, provider=self.provider_social_auth)
+        social_auth = UserSocialAuth.objects.get(user=self.user, provider=self.provider_social_auth)
         return social_auth.extra_data['access_token']
 
     def get_consistent_token(self):
