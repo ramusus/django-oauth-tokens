@@ -124,6 +124,7 @@ class ApiAbstractBase(object):
         return self.call(self.method, *args, **kwargs)
 
     def update_tokens(self):
+        self.logger.info("Updating access tokens, method: %s, recursion count: %d" % (self.method, self.recursion_count))
         self.consistent_token = None
         try:
             return AccessToken.objects.fetch(provider=self.provider)
