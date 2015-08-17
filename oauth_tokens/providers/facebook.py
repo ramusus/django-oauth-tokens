@@ -17,10 +17,11 @@ class FacebookAuthRequest(AuthRequestBase):
     Facebook authorized request class
     '''
     provider = 'facebook'
-    form_action_domain = 'https://facebook.com'
-    login_url = 'https://www.facebook.com/login.php'
+    form_action_domain = 'https://m.facebook.com'
+    login_url = 'https://m.facebook.com/login.php'
     headers = {
         'User-Agent': 'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/34.0.1847.116 Chrome/34.0.1847.116 Safari/537.36',
+        'Upgrade-Insecure-Requests': 1,
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Charset': 'utf-8;q=0.7,*;q=0.3',
         'Accept-Encoding': 'gzip,deflate,sdch',
@@ -45,14 +46,15 @@ class FacebookAuthRequest(AuthRequestBase):
         '''
         response = super(FacebookAuthRequest, self).authorize()
 
+        if 'Cookies Required' in response.content:
+            self.session.get(self.form_action_domain)
+            response = super(FacebookAuthRequest, self).authorize()
+            if 'Cookies Required' in response.content:
+                raise Exception("Facebook 'Cookies required' error")
+
         if 'You are trying too often' in response.content:
             # TODO: fix it
             raise Exception("Facebook authorization request returns error 'You are trying too often'")
-
-        if 'Cookies Required' in response.content:
-            response = requests.get(self.form_action_domain)
-            self.cookies = response.cookies
-            self.authorize()
 
         # TODO: move this to FacebookAcessToken class
         if 'API Error Code: 191' in response.content:
@@ -87,6 +89,10 @@ class FacebookAccessToken(AccessTokenBase):
             raise WrongRedirectUrl(bs.find('div').text)
 
         return response
+
+    def authorization_post_request(self, *args, **kwargs):
+        self.auth_request.session.get(self.auth_request.form_action_domain)
+        return super(FacebookAccessToken, self).authorization_post_request(*args, **kwargs)
 
     def authorization_permissions_request(self, response):
         if 'Redirecting...' in response.content:

@@ -49,13 +49,12 @@ class AuthRequestBase(object, SettingsMixin):
         if self.session.cookies:
             return getattr(self.session, method)(headers=kwargs.pop('headers', self.headers), **kwargs)
         else:
-            raise ValueError('Session not defined')
+            raise ValueError('Session cookies are not defined')
 
     def authorize(self):
         '''
         Authorize and set self.session for next requests and return response of last request
         '''
-
         response = self.session.get(self.login_url, headers=self.headers)
 
         method, action, data = self.get_form_data_from_content(response.content, **self.authorize_form_attributes)

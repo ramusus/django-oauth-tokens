@@ -41,7 +41,7 @@ ODNOKLASSNIKI_NAME = 'Travis Djangov'
 
 FACEBOOK_CLIENT_ID = 439210362826994
 FACEBOOK_CLIENT_SECRET = '02569c93d18e4bc6aa210e594af84652'
-FACEBOOK_SCOPE = ['offline_access', 'read_stream']
+FACEBOOK_SCOPE = ['read_stream']
 FACEBOOK_USERNAME = '+919665223715'
 FACEBOOK_PASSWORD = 'jcej9EIAQrrptDBy'
 FACEBOOK_NAME = 'Travis Djangov'
@@ -207,6 +207,10 @@ class FacebookAccessTokenTest(TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content.count(FACEBOOK_NAME), 2)
 
+            response = req.authorized_request(url='https://facebook.com')
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content.count(FACEBOOK_NAME), 2)
+
 
 class TwitterAccessTokenTest(TestCase):
 
@@ -350,4 +354,4 @@ class OdnoklassnikiAccessTokenTest(TestCase):
 
             response = OdnoklassnikiAuthRequest().authorized_request(url=req.form_action_domain)
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.content.count(ODNOKLASSNIKI_NAME), 2)
+            self.assertGreater(response.content.count(ODNOKLASSNIKI_NAME), 0)
