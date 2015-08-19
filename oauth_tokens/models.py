@@ -150,7 +150,7 @@ class AccessTokenManager(models.Manager):
         if users.count() == 0:
             users = [None]
 
-        access_tokens = []
+        access_tokens = AccessToken.objects.none()
 
         for user in users:
 
@@ -165,9 +165,9 @@ class AccessTokenManager(models.Manager):
                 self.filter(provider=provider, user_credentials=user).delete()
 
             access_token = self.model.objects.create(provider=provider, user_credentials=user, **token)
-            access_tokens += [access_token]
+            access_tokens |= AccessToken.objects.filter(pk=access_token.pk)
 
-        if len(access_tokens) == 0:
+        if access_tokens.count() == 0:
             raise AccessTokenGettingError("No tokens for provider %s" % provider)
 
         return access_tokens
