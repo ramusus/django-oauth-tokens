@@ -10,6 +10,7 @@ from ssl import SSLError
 from requests.exceptions import ConnectionError
 
 from .models import AccessToken, AccessTokenGettingError, AccessTokenRefreshingError
+from .lock import distributedlock, LockNotAcquiredError
 
 __all__ = ['NoActiveTokens', 'ApiAbstractBase', 'Singleton']
 
@@ -127,16 +128,33 @@ class ApiAbstractBase(object):
         self.logger.info("Updating access tokens, method: %s, recursion count: %d" % (self.method, self.recursion_count))
         self.consistent_token = None
         try:
-            return AccessToken.objects.fetch(provider=self.provider)
+            # the first call of method will update tokens, all others will just wait for releasing the lock
+            with distributedlock('update_tokens_for_%s' % self.provider, blocking=False):
+                self.logger.debug('updating tokens')
+                AccessToken.objects.fetch(provider=self.provider)
+                return True
+        except LockNotAcquiredError:
+            # wait until lock will be released and return
+            updated = False
+            while not updated:
+                self.logger.debug('updating tokens, waiting for another execution')
+                try:
+                    with distributedlock('update_tokens_for_%s' % self.provider, blocking=False):
+                        updated = True
+                except LockNotAcquiredError:
+                     time.sleep(1)
+            return True
         except AccessTokenGettingError:
             if self.recursion_count <= self.update_tokens_max_count:
                 time.sleep(1)
                 self.recursion_count += 1
                 self.update_tokens()
+                return True
             else:
                 raise
 
     def refresh_tokens(self):
+        # TODO: implement the same logic of distributedlock as in update_tokens method
         if self.consistent_token:
             self.update_tokens()
         else:

@@ -20,6 +20,7 @@ setup(
         'beautifulsoup4',
         'django-taggit',
         'django-annoying',
+        'distributedlock',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
