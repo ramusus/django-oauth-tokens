@@ -125,19 +125,20 @@ class ApiAbstractBase(object):
         return self.call(self.method, *args, **kwargs)
 
     def update_tokens(self):
-        self.logger.info("Updating access tokens, method: %s, recursion count: %d" % (self.method, self.recursion_count))
         self.consistent_token = None
         try:
             # the first call of method will update tokens, all others will just wait for releasing the lock
             with distributedlock('update_tokens_for_%s' % self.provider, blocking=False):
-                self.logger.debug('updating tokens')
+                self.logger.info("Updating access tokens, method: %s, recursion count: %d" % (self.method,
+                                                                                              self.recursion_count))
                 AccessToken.objects.fetch(provider=self.provider)
                 return True
         except LockNotAcquiredError:
             # wait until lock will be released and return
             updated = False
             while not updated:
-                self.logger.debug('updating tokens, waiting for another execution')
+                self.logger.info("Updating access tokens, waiting for another execution, method: %s, recursion "
+                                 "count: %d" % (self.method, self.recursion_count))
                 try:
                     with distributedlock('update_tokens_for_%s' % self.provider, blocking=False):
                         updated = True
