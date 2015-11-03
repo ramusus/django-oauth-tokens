@@ -48,7 +48,20 @@ class ApiAbstractBase(object):
         self.logger = self.get_logger()
         self.api = None
 
-        # define context of call
+    def set_context(self, **kwargs):
+        # define context of call on each calling, becouse instanse is singleton
+        self.user = self.token_tag = self.consistent_token = None
+
+        if self.token_tag_arg_name in kwargs:
+            warnings.warn('Kwarg `%s` is deprecated, use `OAUTH_TOKENS_API_CALL_CONTEXT` instead.'
+                          % self.token_tag_arg_name, DeprecationWarning)
+            self.token_tag = kwargs.pop(self.token_tag_arg_name, None)
+
+        if self.user_arg_name in kwargs:
+            warnings.warn('Kwarg `%s` is deprecated, use `OAUTH_TOKENS_API_CALL_CONTEXT` instead.'
+                          % self.user_arg_name, DeprecationWarning)
+            self.user = kwargs.pop(self.user_arg_name, None)
+
         context = getattr(settings, 'OAUTH_TOKENS_API_CALL_CONTEXT', None)
         if context and self.provider in context:
             if 'user' in context[self.provider]:
@@ -60,16 +73,7 @@ class ApiAbstractBase(object):
 
     def call(self, method, *args, **kwargs):
         self.method = method
-
-        if self.token_tag_arg_name in kwargs:
-            warnings.warn('Kwarg `%s` is deprecated, use `OAUTH_TOKENS_API_CALL_CONTEXT` instead.'
-                          % self.token_tag_arg_name, DeprecationWarning)
-            self.token_tag = kwargs.pop(self.token_tag_arg_name, None)
-
-        if self.user_arg_name in kwargs:
-            warnings.warn('Kwarg `%s` is deprecated, use `OAUTH_TOKENS_API_CALL_CONTEXT` instead.'
-                          % self.user_arg_name, DeprecationWarning)
-            self.user = kwargs.pop(self.user_arg_name, None)
+        self.set_context(**kwargs)
 
         try:
             token = self.get_token(tag=self.token_tag)
@@ -200,7 +204,6 @@ class ApiAbstractBase(object):
             token = self.consistent_token
 
         if not token:
-
             if self.user:
                 # python social auth hook
                 return self.get_token_for_user()
