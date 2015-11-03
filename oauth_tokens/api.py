@@ -3,11 +3,14 @@ import logging
 import socket
 import sys
 import time
+import warnings
 from abc import ABCMeta, abstractmethod, abstractproperty
 from httplib import BadStatusLine, ResponseNotReady
 from ssl import SSLError
 
 from requests.exceptions import ConnectionError
+from django.conf import settings
+from django.test.utils import override_settings
 
 from .models import AccessToken, AccessTokenGettingError, AccessTokenRefreshingError
 from .lock import distributedlock, LockNotAcquiredError
@@ -41,14 +44,32 @@ class ApiAbstractBase(object):
 
     def __init__(self):
         self.used_access_tokens = []
-        self.consistent_token = self.get_consistent_token()
+        self.consistent_token = None
         self.logger = self.get_logger()
         self.api = None
 
+        # define context of call
+        context = getattr(settings, 'OAUTH_TOKENS_API_CALL_CONTEXT', None)
+        if context and self.provider in context:
+            if 'user' in context[self.provider]:
+                self.user = context[self.provider]['user']
+            if 'tag' in context[self.provider]:
+                self.token_tag = context[self.provider]['tag']
+            if 'token' in context[self.provider]:
+                self.consistent_token = context[self.provider]['token']
+
     def call(self, method, *args, **kwargs):
         self.method = method
-        self.token_tag = kwargs.pop(self.token_tag_arg_name, None)
-        self.user= kwargs.pop(self.user_arg_name, None)
+
+        if self.token_tag_arg_name in kwargs:
+            warnings.warn('Kwarg `%s` is deprecated, use `OAUTH_TOKENS_API_CALL_CONTEXT` instead.'
+                          % self.token_tag_arg_name, DeprecationWarning)
+            self.token_tag = kwargs.pop(self.token_tag_arg_name, None)
+
+        if self.user_arg_name in kwargs:
+            warnings.warn('Kwarg `%s` is deprecated, use `OAUTH_TOKENS_API_CALL_CONTEXT` instead.'
+                          % self.user_arg_name, DeprecationWarning)
+            self.user = kwargs.pop(self.user_arg_name, None)
 
         try:
             token = self.get_token(tag=self.token_tag)
@@ -210,9 +231,6 @@ class ApiAbstractBase(object):
         social_auth = UserSocialAuth.objects.get(user=self.user, provider=self.provider_social_auth)
         return social_auth.extra_data['access_token']
 
-    def get_consistent_token(self):
-        pass
-
     def get_logger(self):
         return logging.getLogger('%s_api' % self.provider)
 
@@ -243,3 +261,7 @@ class Singleton(ABCMeta):
         if cls.instance is None:
             cls.instance = super(Singleton, cls).__call__(*args, **kw)
         return cls.instance
+
+
+def override_api_context(provider, **kwargs):
+    return override_settings(OAUTH_TOKENS_API_CALL_CONTEXT={provider: kwargs})
