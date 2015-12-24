@@ -5,7 +5,7 @@ import sys
 import time
 import warnings
 from abc import ABCMeta, abstractmethod, abstractproperty
-from httplib import BadStatusLine, ResponseNotReady
+from httplib import BadStatusLine, ResponseNotReady, IncompleteRead
 from ssl import SSLError
 
 from requests.exceptions import ConnectionError
@@ -27,7 +27,7 @@ class ApiAbstractBase(object):
 
     consistent_token = None
     error_class = Exception
-    error_class_repeat = (SSLError, ConnectionError, socket.error, BadStatusLine, ResponseNotReady)
+    error_class_repeat = (SSLError, ConnectionError, socket.error, BadStatusLine, ResponseNotReady, IncompleteRead)
     sleep_repeat_error_messages = []
 
     recursion_count = 0
@@ -150,10 +150,11 @@ class ApiAbstractBase(object):
         return self.call(self.method, *args, **kwargs)
 
     def update_tokens(self):
+        lock_name = 'update_tokens_for_%s' % self.provider
         self.consistent_token = None
         try:
             # the first call of method will update tokens, all others will just wait for releasing the lock
-            with distributedlock('update_tokens_for_%s' % self.provider, blocking=False):
+            with distributedlock(lock_name, blocking=False):
                 self.logger.info("Updating access tokens, method: %s, recursion count: %d" % (self.method,
                                                                                               self.recursion_count))
                 AccessToken.objects.fetch(provider=self.provider)
@@ -165,7 +166,7 @@ class ApiAbstractBase(object):
                 self.logger.info("Updating access tokens, waiting for another execution, method: %s, recursion "
                                  "count: %d" % (self.method, self.recursion_count))
                 try:
-                    with distributedlock('update_tokens_for_%s' % self.provider, blocking=False):
+                    with distributedlock(lock_name, blocking=False):
                         updated = True
                 except LockNotAcquiredError:
                      time.sleep(1)
