@@ -21,6 +21,7 @@ setup(
         'django-taggit',
         'django-annoying',
         'distributedlock',
+        'simplejson',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',

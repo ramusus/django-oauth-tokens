@@ -14,6 +14,7 @@ from .providers.facebook import FacebookAccessToken, FacebookAuthRequest
 from .providers.odnoklassniki import OdnoklassnikiAccessToken, OdnoklassnikiAuthRequest
 from .providers.twitter import TwitterAccessToken, TwitterAuthRequest
 from .providers.vkontakte import VkontakteAccessToken, VkontakteAuthRequest
+from .providers.instagram import InstagramAccessToken, InstagramAuthRequest
 
 TWITTER_CLIENT_ID = 'NLKrDQAE6YcSi76b0PGSg'
 TWITTER_CLIENT_SECRET = '4D8TBznBjiJWlRE00G4qETLNNmfFadiKbREDrmNSDE'
@@ -45,6 +46,14 @@ FACEBOOK_SCOPE = ['read_stream']
 FACEBOOK_USERNAME = '+919665223715'
 FACEBOOK_PASSWORD = 'jcej9EIAQrrptDBy'
 FACEBOOK_NAME = 'Travis Djangov'
+
+INSTAGRAM_CLIENT_ID = 'fac34adbc6fd4f56803ec100234bf682'
+INSTAGRAM_CLIENT_SECRET = '84a6a4732d31441d8794fd0e9cf6fe01'
+INSTAGRAM_SCOPE = []
+INSTAGRAM_USERNAME = 'atsepk'
+INSTAGRAM_PASSWORD = 'fa54FsD'
+INSTAGRAM_SCREEN_NAME = 'atsepk'
+
 
 oauth2_token_mock_response = {'access_token': 's' * 81,
                               'refresh_token': 'e' * 41,
@@ -355,3 +364,46 @@ class OdnoklassnikiAccessTokenTest(TestCase):
             response = OdnoklassnikiAuthRequest().authorized_request(url=req.form_action_domain)
             self.assertEqual(response.status_code, 200)
             self.assertGreater(response.content.count(ODNOKLASSNIKI_NAME), 0)
+
+
+class InstagramAccessTokenTest(TestCase):
+
+    def assertInstagramToken(self, token_class, token):
+        self.assertGreater(len(token['access_token']), 40)
+        # self.assertEqual(len(token['access_token'].split(token_class.delimeter)), 2)
+        # self.assertEqual(int(token['user_id']), INSTAGRAM_USER_ID)
+
+    def test_instagram_oauth_access_token(self):
+        settings_temp = dict(OAUTH_TOKENS_INSTAGRAM_USERNAME=INSTAGRAM_USERNAME,
+                             OAUTH_TOKENS_INSTAGRAM_PASSWORD=INSTAGRAM_PASSWORD,
+                             OAUTH_TOKENS_INSTAGRAM_CLIENT_ID=INSTAGRAM_CLIENT_ID,
+                             OAUTH_TOKENS_INSTAGRAM_CLIENT_SECRET=INSTAGRAM_CLIENT_SECRET)
+
+        with self.settings(**settings_temp):
+            token = InstagramAccessToken()
+            self.assertInstagramToken(token, token.get())
+
+    def test_instagram_oauth_access_token_user_in_db(self):
+        settings_temp = dict(OAUTH_TOKENS_INSTAGRAM_USERNAME=None,
+                             OAUTH_TOKENS_INSTAGRAM_PASSWORD=None,
+                             OAUTH_TOKENS_INSTAGRAM_CLIENT_ID=INSTAGRAM_CLIENT_ID,
+                             OAUTH_TOKENS_INSTAGRAM_CLIENT_SECRET=INSTAGRAM_CLIENT_SECRET)
+
+        with self.settings(**settings_temp):
+            token = InstagramAccessToken(username=INSTAGRAM_USERNAME, password=INSTAGRAM_PASSWORD)
+            self.assertInstagramToken(token, token.get())
+
+    def test_instagram_authorized_request(self):
+        settings_temp = dict(OAUTH_TOKENS_INSTAGRAM_USERNAME=INSTAGRAM_USERNAME,
+                             OAUTH_TOKENS_INSTAGRAM_PASSWORD=INSTAGRAM_PASSWORD)
+
+        with self.settings(**settings_temp):
+            req = InstagramAuthRequest()
+
+            response = requests.get(url=req.form_action_domain)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content.count(INSTAGRAM_SCREEN_NAME), 0)
+
+            response = req.authorized_request(url=req.form_action_domain)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content.count(INSTAGRAM_SCREEN_NAME), 1)

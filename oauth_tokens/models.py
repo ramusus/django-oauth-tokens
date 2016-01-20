@@ -26,6 +26,7 @@ PROVIDERS = [
     'facebook',
     'twitter',
     'odnoklassniki',
+    'instagram',
 ]
 PROVIDER_CHOICES = [((provider, provider.title())) for provider in PROVIDERS]
 ACCESS_TOKENS_CLASSES = getattr(settings, 'OAUTH_TOKENS_CLASSES',

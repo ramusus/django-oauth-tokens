@@ -52,9 +52,9 @@ class AuthRequestBase(object, SettingsMixin):
             raise ValueError('Session cookies are not defined')
 
     def authorize(self):
-        '''
+        """
         Authorize and set self.session for next requests and return response of last request
-        '''
+        """
         response = self.session.get(self.login_url, headers=self.headers)
 
         method, action, data = self.get_form_data_from_content(response.content, **self.authorize_form_attributes)
@@ -101,7 +101,7 @@ class AccessTokenBase(object, SettingsMixin):
         if self.type not in ['oauth1', 'oauth2']:
             raise ImproperlyConfigured("Property type should be equal 'oauth1' or 'oauth2'")
 
-        if getattr(self, 'redirect_uri', None):
+        if getattr(self, 'redirect_uri', None) is None:
             self.redirect_uri = self.get_setting('redirect_uri') or self.redirect_uri
             if getattr(self, 'return_to', None) is None:
                 self.return_to = self.redirect_uri
@@ -126,10 +126,10 @@ class AccessTokenBase(object, SettingsMixin):
             return self.oauth2_refresh(token)
 
     def oauth1_get(self):
-        '''
+        """
         Get and return access_token from provider using OAuth1 workflow
         Based on docs http://requests-oauthlib.readthedocs.org/en/latest/oauth1_workflow.html
-        '''
+        """
         self.oauth = OAuth1Session(self.client_id, client_secret=self.client_secret)
         fetch_response = self.oauth.fetch_request_token(self.request_token_url)
         resource_owner_key = fetch_response.get('oauth_token')
@@ -146,19 +146,18 @@ class AccessTokenBase(object, SettingsMixin):
         return self.oauth.fetch_access_token(self.access_token_url)
 
     def oauth2_get(self):
-        '''
+        """
         Get and return access_token from provider using OAuth2 workflow
         Based on docs http://requests-oauthlib.readthedocs.org/en/latest/oauth2_workflow.html
-        '''
+        """
         self.oauth = OAuth2Session(self.client_id, redirect_uri=self.redirect_uri, scope=self.scope)
 
         authorization_response_url = self.user_authorization()
         # hack preventing to oauthlib comparing scope returned by response with initial
         # servers never returns scope parameter with token
         self.oauth.scope = None
-        token = self.oauth.fetch_token(self.access_token_url,
-                                       authorization_response=authorization_response_url,
-                                       client_secret=self.client_secret)
+        token = self.fetch_token(authorization_response_url)
+
         # set scope manually
         token['scope'] = self.scope
         return token
@@ -172,10 +171,15 @@ class AccessTokenBase(object, SettingsMixin):
         token['scope'] = self.scope
         return token
 
+    def fetch_token(self, authorization_response_url):
+        return self.oauth.fetch_token(self.access_token_url,
+                                       authorization_response=authorization_response_url,
+                                       client_secret=self.client_secret)
+
     def user_authorization(self):
-        '''
+        """
         Implelent user behaviour: login and approve app permissions request
-        '''
+        """
         response = self.authorization_get_request()
         log.debug('auth get url: %s' % response.url)
 
@@ -195,10 +199,7 @@ class AccessTokenBase(object, SettingsMixin):
         raise WrongAuthorizationResponseUrl("Wrong result url of authorization process: %s" % response.url)
 
     def authorization_get_request(self):
-        authorization_url = self.oauth.authorization_url(self.authorize_url)
-        if self.type == 'oauth2':
-            authorization_url, state = authorization_url
-        return self.auth_request.session.get(url=authorization_url, headers=self.auth_request.headers)
+        return self.auth_request.session.get(url=self.get_authorization_url(), headers=self.auth_request.headers)
 
     def authorization_post_request(self, response):
         method, action, data = self.auth_request.get_form_data_from_content(response.content)
@@ -206,6 +207,12 @@ class AccessTokenBase(object, SettingsMixin):
 
     def authorization_permissions_request(self, response):
         return response
+
+    def get_authorization_url(self):
+        authorization_url = self.oauth.authorization_url(self.authorize_url)
+        if self.type == 'oauth2':
+            authorization_url, state = authorization_url
+        return authorization_url
 
     def get_url_from_response(self, response):
         raise NotImplementedError
