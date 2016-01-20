@@ -4,7 +4,6 @@ from bs4 import BeautifulSoup
 import simplejson as json
 
 from ..base import AccessTokenBase, AuthRequestBase, log
-from ..exceptions import LoginPasswordError, AccountLocked, WrongRedirectUrl, RedirectUriError
 
 
 class InstagramAuthRequest(AuthRequestBase):
@@ -58,6 +57,10 @@ class InstagramAccessToken(AccessTokenBase):
 
     auth_request_class = InstagramAuthRequest
 
+    def __init__(self, *args, **kwargs):
+        super(InstagramAccessToken, self).__init__(*args, **kwargs)
+        self.scope = u'+'.join(self.scope)
+
     def authorization_permissions_request(self, response):
         if response.url[:72] == 'https://www.instagram.com/oauth/authorize?response_type=token&client_id=':
             bs = BeautifulSoup(response.content)
@@ -90,7 +93,7 @@ class InstagramAccessToken(AccessTokenBase):
         response = getattr(self.auth_request.session, method)(url=action, headers=self.auth_request.headers, data=data)
         if response.status_code == 400:
             response_json = json.loads(response.content)
-            raise RedirectUriError('Code %(code)s. %(error_type)s: %(error_message)s' % response_json)
+            raise Exception('Code %(code)s. %(error_type)s: %(error_message)s' % response_json)
         return response
 
     def get_authorization_url(self):

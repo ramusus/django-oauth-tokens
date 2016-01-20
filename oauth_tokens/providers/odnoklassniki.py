@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from ..base import AccessTokenBase, AuthRequestBase, log
-from ..exceptions import LoginPasswordError, AccountLocked, WrongRedirectUrl
 
 
 class OdnoklassnikiAuthRequest(AuthRequestBase):

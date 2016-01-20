@@ -12,7 +12,3 @@ class WrongRedirectUrl(Exception):
 
 class WrongAuthorizationResponseUrl(Exception):
     pass
-
-
-class RedirectUriError(Exception):
-    pass
