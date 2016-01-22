@@ -41,6 +41,8 @@ class TwitterAccessToken(AccessTokenBase):
     access_token_url = 'https://api.twitter.com/oauth/access_token'
     request_token_url = 'https://api.twitter.com/oauth/request_token'
 
+    redirect_uri = 'https://twitter.com/'
+
     auth_request_class = TwitterAuthRequest
 
     delimeter = '----------'

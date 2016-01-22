@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import simplejson as json
 
 from ..base import AccessTokenBase, AuthRequestBase, log
+from ..exceptions import WrongAuthorizationResponseUrl
 
 
 class InstagramAuthRequest(AuthRequestBase):
@@ -102,7 +103,10 @@ class InstagramAccessToken(AccessTokenBase):
         return authorization_url.replace('response_type=code', 'response_type=token')
 
     def get_url_from_response(self, response):
-        return response.url.split('access_token=')[1]
+        try:
+            return response.url.split('access_token=')[1]
+        except Exception as e:
+            raise WrongAuthorizationResponseUrl(e)
 
     def fetch_token(self, access_token):
         return {'access_token': access_token}
