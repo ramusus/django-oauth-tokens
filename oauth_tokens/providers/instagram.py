@@ -3,8 +3,8 @@ import re
 from bs4 import BeautifulSoup
 import simplejson as json
 
-from ..base import AccessTokenBase, AuthRequestBase, log
-from ..exceptions import WrongAuthorizationResponseUrl
+from ..base import AccessTokenBase, AuthRequestBase
+from ..exceptions import WrongAuthorizationResponseUrl, AccountLocked
 
 
 class InstagramAuthRequest(AuthRequestBase):
@@ -18,7 +18,8 @@ class InstagramAuthRequest(AuthRequestBase):
     headers = {
         'Accept': '*/*',
         'Origin': 'https://www.instagram.com',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.111 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_2) AppleWebKit/537.36 (KHTML, like Gecko) '
+                      'Chrome/47.0.2526.111 Safari/537.36',
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
         'Referer': 'https://www.instagram.com/',
         'X-Instagram-AJAX': 1,
@@ -36,14 +37,17 @@ class InstagramAuthRequest(AuthRequestBase):
         if force_classic_login:
             return super(InstagramAuthRequest, self).get_form_data_from_content(content)
 
-        tokens = re.findall(r'"csrf_token"\:"([^"]+)"', content)
-        if len(tokens) == 0:
-            raise Exception("No any CSRF token in source of login page")
-        self.headers['X-CSRFToken'] = tokens[0]
+        self.headers['X-CSRFToken'] = self.get_csrf_token_from_content(content)
 
         data = {}
         self.add_data_credentials(data)
-        return ('post', self.form_action, data)
+        return 'post', self.form_action, data
+
+    def get_csrf_token_from_content(self, content):
+        tokens = re.findall(r'"csrf_token": *"([^"]+)"', content)
+        if len(tokens) == 0:
+            raise Exception("No any CSRF token in source of login page")
+        return tokens[0]
 
 
 class InstagramAccessToken(AccessTokenBase):
@@ -58,9 +62,10 @@ class InstagramAccessToken(AccessTokenBase):
 
     auth_request_class = InstagramAuthRequest
 
-    def __init__(self, *args, **kwargs):
-        super(InstagramAccessToken, self).__init__(*args, **kwargs)
-        self.scope = u'+'.join(self.scope)
+    def __init__(self, **kwargs):
+        super(InstagramAccessToken, self).__init__(**kwargs)
+        if self.scope:
+            self.scope = u'+'.join(self.scope)
 
     def authorization_permissions_request(self, response):
         if response.url[:72] == 'https://www.instagram.com/oauth/authorize?response_type=token&client_id=':
@@ -78,6 +83,8 @@ class InstagramAccessToken(AccessTokenBase):
             for resp in response.history:
                 if 'access_token=' in resp.url:
                     response = resp
+        if 'integrity/checkpoint' in response.url:
+            raise AccountLocked("There are some problems in authorization process. Try to login in browser")
         return super(InstagramAccessToken, self).process_authorization_response(response)
 
     def authorization_get_request(self):
