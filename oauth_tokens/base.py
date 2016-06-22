@@ -1,16 +1,21 @@
 from abc import ABCMeta, abstractproperty, abstractmethod
 import logging
+import pickle
 
 from bs4 import BeautifulSoup
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.core.cache import get_cache, InvalidCacheBackendError
 import requests
 from requests_oauthlib import OAuth1Session, OAuth2Session
 
 from .exceptions import WrongAuthorizationResponseUrl
-from .models import UserCredentials
 
 log = logging.getLogger('oauth_tokens')
+try:
+    cache = get_cache(getattr(settings, 'OAUTH_TOKENS_AUTH_SESSION_CACHE_BACKEND', 'default'))
+except InvalidCacheBackendError as e:
+    raise InvalidCacheBackendError("Oauth tokens error: Specify CACHES['default'] or custom cache backend for session storage")
 
 
 class SettingsMixin:
@@ -33,11 +38,22 @@ class AuthRequestBase(object, SettingsMixin):
         pass
 
     def __init__(self, username=None, password=None, additional=None):
-        self.session = requests.Session()
-
         self.username = username or self.get_setting('username')
         self.password = password or self.get_setting('password')
         self.additional = additional or self.get_setting('additional')
+
+        self.get_session()
+
+    @property
+    def cache_name(self):
+        return '%s_%s_session' % (self.provider, self.username)
+
+    def get_session(self):
+        session = cache.get(self.cache_name)
+        self.session = pickle.loads(session) if session else requests.Session()
+
+    def set_session(self):
+        cache.set(self.cache_name, pickle.dumps(self.session))
 
     def authorized_request(self, method='get', **kwargs):
         if method not in ['get', 'post']:
@@ -45,6 +61,8 @@ class AuthRequestBase(object, SettingsMixin):
 
         if not self.session.cookies:
             self.authorize()
+            if self.session.cookies:
+                self.set_session()
 
         if self.session.cookies:
             return getattr(self.session, method)(headers=kwargs.pop('headers', self.headers), **kwargs)
@@ -75,6 +93,10 @@ class AuthRequestBase(object, SettingsMixin):
             action = self.form_action_domain + action
 
         return (form.get('method').lower(), action, data)
+
+    @abstractproperty
+    def login_url(self):
+        pass
 
     @abstractmethod
     def add_data_credentials(self, data):
@@ -109,10 +131,6 @@ class AccessTokenBase(object, SettingsMixin):
         self.client_id = self.get_setting('client_id')
         self.client_secret = self.get_setting('client_secret')
         self.scope = self.get_setting('scope')
-
-        self.set_auth_request(**kwargs)
-
-    def set_auth_request(self, **kwargs):
         self.auth_request = self.auth_request_class(**kwargs)
 
     def get(self):
@@ -173,8 +191,8 @@ class AccessTokenBase(object, SettingsMixin):
 
     def fetch_token(self, authorization_response_url):
         return self.oauth.fetch_token(self.access_token_url,
-                                       authorization_response=authorization_response_url,
-                                       client_secret=self.client_secret)
+                                      authorization_response=authorization_response_url,
+                                      client_secret=self.client_secret)
 
     def user_authorization(self):
         """
@@ -219,6 +237,10 @@ class AccessTokenBase(object, SettingsMixin):
 
     @abstractproperty
     def provider(self):
+        pass
+
+    @abstractproperty
+    def type(self):
         pass
 
     @abstractproperty
