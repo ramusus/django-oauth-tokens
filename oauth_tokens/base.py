@@ -15,7 +15,7 @@ log = logging.getLogger('oauth_tokens')
 try:
     cache = get_cache(getattr(settings, 'OAUTH_TOKENS_AUTH_SESSION_CACHE_BACKEND', 'default'))
 except InvalidCacheBackendError as e:
-    raise InvalidCacheBackendError("Oauth tokens error: Specify CACHES['default'] or custom cache backend for session storage")
+    cache = None
 
 
 class SettingsMixin:
@@ -49,11 +49,12 @@ class AuthRequestBase(object, SettingsMixin):
         return '%s_%s_session' % (self.provider, self.username)
 
     def get_session(self):
-        session = cache.get(self.cache_name)
+        session = cache.get(self.cache_name) if cache else None
         self.session = pickle.loads(session) if session else requests.Session()
 
     def set_session(self):
-        cache.set(self.cache_name, pickle.dumps(self.session))
+        if cache:
+            cache.set(self.cache_name, pickle.dumps(self.session))
 
     def authorized_request(self, method='get', **kwargs):
         if method not in ['get', 'post']:
